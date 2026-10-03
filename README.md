@@ -1,5 +1,7 @@
-# Symbiote
+# Project Symbiote (Hobby Project)
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
+
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/0c12d6dc-94f7-4ec2-9081-c5cd3f0d7d17" />
 
 # Implemented Features
 
