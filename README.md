@@ -1,7 +1,9 @@
 # Project Symbiote (Hobby Project)
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/0c12d6dc-94f7-4ec2-9081-c5cd3f0d7d17" />
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/f58a6ece-fbc9-41b1-b44b-a0d4cb575248" />  
+
+*early shell testing*
 
 # Implemented Features
 
@@ -55,3 +57,24 @@ Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 
 **Boot sequence**  
 - `kmain` verifies protocol → brings up serial → prints version → runs all extensions → prints readiness banner with `ext_count()` → halts. (`src/main.c`)
+
+**Version header**  
+`src/core/version.h` now holds `SYM_VERSION`, and both `main.c` and `shell.c` include it.   
+The duplication that was flagged in the shell pass is gone. One source of truth for the version string.  
+
+**Keyboard driver**   
+`src/core/keyboard.h` / `keyboard.c` went through three real fixes:
+- The API changed from `char kbd_poll(void)` to `enum kbd_event kbd_poll(char *out)`, with distinct events for "no key", "character", "special key", and "unknown scancode". Modifier events and unrecognized scancodes are no longer conflated with "nothing happened".
+- `kbd_init()` now returns `bool`. It runs the PS/2 self-test (`0xAA`), reads the controller configuration byte, sets translation on, clears the disable-clock bit, and re-enables the device. On a machine with no controller, it returns `false` and the shell halts with a message instead of silently blocking on a nonexistent keyboard.
+- Scancode set is now handled by the controller's translation, not by asking the device to switch to set 1. That was the fix for the "random characters" symptom: the device was emitting set 2 and the tables were set 1. Turning translation on makes the controller do the conversion, which is what every real PS/2 driver does.
+- The AUXBUF bit (0x20 of port 0x64) is now checked in `kbd_poll`. Bytes from the mouse are consumed and dropped instead of being decoded as scancodes. That was the fix for "moving the mouse produces characters" and "alt-tab scrambles the keyboard".
+
+**Shell**  
+`src/core/shell.c` runs at `kmain`'s end, replaces the halt. Seven commands: `help`, `echo`, `clear`, `version`, `exts`, `panic`, `halt`.  
+Line editor handles backspace. Tokenizer splits on spaces and tabs in place. Nonzero exit codes from commands are reported.  
+The prompt loop never returns, which is why the shell is core and not an extension.  
+
+**Bugs fixed:**  
+1. Random characters from set-1/set-2 mismatch → fixed by enabling controller translation.
+2. Characters appearing when the mouse moved → fixed by checking AUXBUF before reading from 0x60.
+
