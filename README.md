@@ -1,9 +1,8 @@
 # Project Symbiote (Hobby Project)
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/f58a6ece-fbc9-41b1-b44b-a0d4cb575248" />  
+<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/359926a7-42e1-4ac2-961f-b4eab59bd301" />
 
-*early shell testing*
 
 # Changelog and Activity
 
@@ -57,6 +56,10 @@ Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 
 **Boot sequence**  
 - `kmain` verifies protocol → brings up serial → prints version → runs all extensions → prints readiness banner with `ext_count()` → halts. (`src/main.c`)
+
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/f58a6ece-fbc9-41b1-b44b-a0d4cb575248" />  
+
+*early shell testing*
 
 **Version header**  
 `src/core/version.h` now holds `SYM_VERSION`, and both `main.c` and `shell.c` include it.   
