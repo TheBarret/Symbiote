@@ -49,7 +49,7 @@ Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 **Panic and assertion**  
 - `PANIC(...)` and `ASSERT(cond)` macros. (`core/panic.h`)
 - `panic_at()` disables interrupts, guards against re-entry, dumps registers, prints the active extension, walks the frame-pointer chain (bounded to 16 frames with alignment and kernel-half checks), and halts. (`core/panic.c`)
-- The panic path is compiled and linked but **has not been exercised** on this machine yet. The `hello` extension's `SYM_TEST_PANIC` hatch is the way to test it.
+- **The panic path is compiled and linked but **has not been exercised** on this machine yet.**
 
 **Memory and string primitives**  
 - `memcpy`, `memset`, `memmove`, `memcmp` exist as real symbols (compiler fallback) and are routed to compiler builtins at normal call sites via macros. (`lib/mem.c`, `lib/mem.h`)
