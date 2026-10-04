@@ -5,24 +5,18 @@
 #include <core/ext.h>
 #include <core/kprintf.h>
 #include <core/serial.h>
+#include <core/shell.h>
+#include <core/version.h>
 
-#define SYM_VERSION "0.1.0"
-
-/* The kernel entry point; the linker script names it as ENTRY. */
 void kmain(void) {
     if (!boot_protocol_ok())
         cpu_halt_forever();
 
-    /* Serial console */
     serial_init();
-    kprintf("[boot] Symbiote %s\n", SYM_VERSION);
-
-    /* Framebuffer console, drivers, shells go here.. */
+    kprintf("[kernel] Symbiote %s\n", SYM_VERSION);
     ext_init_all();
+    kprintf("\n\x1b[1;92m[kernel] \x1b[0m %zu extension(s) loaded\n", ext_count());
 
-    kprintf("\n\x1b[1;92mSymbiote %s\x1b[0m  chassis ready, %zu extension(s) attached.\n", SYM_VERSION, ext_count());
-    kprintf("Nothing else to do yet. This is milestone M1.\n");
-
-    /* Idle, (interrupts are not set up until M2/M3, so this simply parks) */
-    cpu_halt_forever();
+    /* Hand control to the interactive shell. */
+    shell_run();
 }
