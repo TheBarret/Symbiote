@@ -5,7 +5,7 @@ Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine
 
 *early shell testing*
 
-# Implemented Features
+# Changelog and Activity
 
 **Boot and protocol**  
 - Limine boots the kernel from an ISO under both BIOS and UEFI. Hybrid ISO assembled by the master `Makefile`.
