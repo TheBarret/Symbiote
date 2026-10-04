@@ -35,3 +35,10 @@ void console_register(const struct console_ops *ops) {
         ops->write(log_buf + log_head, LOG_SIZE - log_head);
     ops->write(log_buf, log_head);
 }
+
+void console_putc(char c) {
+    /* Route through console_write so the byte lands in the ring buffer too,
+     * which means a late-attaching console sees interactively-typed characters in the replay,
+     * so does everything else. */
+    console_write(&c, 1);
+}
