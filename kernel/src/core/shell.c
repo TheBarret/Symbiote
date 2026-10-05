@@ -14,6 +14,7 @@
 #include <core/version.h>
 #include <core/pmm.h>
 #include <core/vmm.h>
+#include <core/heap.h>
 
 #define SHELL_LINE_MAX  128
 #define SHELL_ARG_MAX   8
@@ -242,41 +243,6 @@ static int cmd_vmtest(int argc, char **argv) {
 
 /* Read one line from the keyboard into buf (up to cap-1 chars).
  * Handles backspace, echoes as it goes, returns the length.
-
-static size_t read_line_old(char *buf, size_t cap) {
-    size_t len = 0;
-    for (;;) {
-        char c = kbd_getchar();
-
-        if (c == '\n') {
-            console_putc('\n');
-            break;
-        }
-
-        if (c == '\b') {
-            if (len > 0) {
-                len--;
-                // Move back, overwrite with space, move back again.
-                // This is what a terminal expects.
-                console_putc('\b');
-                console_putc(' ');
-                console_putc('\b');
-            }
-            continue;
-        }
-
-        if (c < 0x20 || c > 0x7E)
-            continue;   // ignore other control chars and non-ASCII
-
-        if (len + 1 >= cap)
-            continue;   // line is full: silently drop further input
-
-        buf[len++] = c;
-        console_putc(c);
-    }
-    buf[len] = '\0';
-    return len;
-}
 */
 static size_t read_line(char *buf, size_t cap) {
     size_t len = 0;
@@ -330,6 +296,81 @@ static int tokenize(char *line, char **argv, int max) {
     return argc;
 }
 
+/* heap commands  */
+
+static int cmd_heap(int argc, char **argv) {
+    (void)argc; (void)argv;
+    struct heap_stats s = heap_get_stats();
+    kprintf("heap: %zu chunk(s), %zu block(s) (%zu free)\n",
+            s.chunks, s.blocks, s.blocks_free);
+    kprintf("  used:         %zu bytes\n", s.bytes_used);
+    kprintf("  free:         %zu bytes\n", s.bytes_free);
+    kprintf("  largest free: %zu bytes\n", s.largest_free);
+    return 0;
+}
+
+static int cmd_heaptest(int argc, char **argv) {
+    (void)argc; (void)argv;
+
+    enum { N = 64 };
+    void *ptrs[N] = {0};
+    size_t sizes[N] = {0};
+
+    /* Seed with a fixed value so runs are reproducible. */
+    uint32_t seed = 0x12345678;
+    struct heap_stats before = heap_get_stats();
+
+    for (int iter = 0; iter < 2000; iter++) {
+        /* Simple LCG; deterministic. */
+        seed = seed * 1103515245u + 12345u;
+
+        int slot = (int)((seed >> 16) % N);
+        if (ptrs[slot] == NULL) {
+            size_t sz = 1 + ((seed >> 8) % 1024);
+            void *p = kmalloc(sz);
+            if (p == NULL)
+                continue;
+            uint8_t *bytes = p;
+            for (size_t i = 0; i < sz; i++)
+                bytes[i] = (uint8_t)(slot ^ i);
+            ptrs[slot] = p;
+            sizes[slot] = sz;
+        } else {
+            uint8_t *bytes = ptrs[slot];
+            for (size_t i = 0; i < sizes[slot]; i++) {
+                if (bytes[i] != (uint8_t)(slot ^ i)) {
+                    kprintf("heaptest: corruption in slot %d at byte %zu\n",
+                            slot, i);
+                    return 1;
+                }
+            }
+            kfree(ptrs[slot]);
+            ptrs[slot] = NULL;
+            sizes[slot] = 0;
+        }
+    }
+
+    /* Free whatever is left. */
+    for (int i = 0; i < N; i++) {
+        if (ptrs[i]) {
+            kfree(ptrs[i]);
+            ptrs[i] = NULL;
+        }
+    }
+
+    struct heap_stats after = heap_get_stats();
+    if (after.bytes_used != 0) {
+        kprintf("heaptest: leak: %zu bytes still used\n", after.bytes_used);
+        return 1;
+    }
+
+    /* Chunks may be greater than before (the test may have grown the heap)
+     * but blocks used should be zero and free blocks should be non-zero. */
+    kprintf("heaptest: OK (before: %zu chunks, after: %zu chunks, used: %zu bytes)\n",
+            before.chunks, after.chunks, after.bytes_used);
+    return 0;
+}
+
 /*  built-in commands  */
 
 static int cmd_help(int argc, char **argv);
@@ -362,6 +403,8 @@ static const struct command commands[] = {
     { "memtest", "PMM self-test",           cmd_memtest },
     { "vmm",     "VMM status",              cmd_vmm },
     { "vmtest",  "VMM self-test",           cmd_vmtest },
+    { "heap",    "Heap status",             cmd_heap },
+    { "heaptest","Heap self-test",          cmd_heaptest },
 };
 #define NCOMMANDS (sizeof commands / sizeof commands[0])
 

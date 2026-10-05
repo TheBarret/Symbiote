@@ -163,7 +163,7 @@ static void apply_kernel_wx(void) {
 
 void vmm_init(void) {
     if (!boot_memory_ok())
-        PANIC("vmm: memmap/hhdm missing (pmm_init first)");
+        PANIC("memmap/hhdm missing (pmm_init first)");
 
     nx_ok = efer_nxe_enabled();
     if (!nx_ok)

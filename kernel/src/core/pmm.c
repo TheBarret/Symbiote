@@ -101,7 +101,7 @@ static void reserve_special_regions(struct limine_memmap_response *map) {
 
 void pmm_init(void) {
     if (!boot_memory_ok())
-        PANIC("Error: bootloader did not provide (memory) memmap or hhdm");
+        PANIC("bootloader did not provide (memory) memmap or hhdm");
 
     struct limine_memmap_response *map = boot_memmap();
     uint64_t hhdm = boot_hhdm_offset();
@@ -109,7 +109,7 @@ void pmm_init(void) {
     /* Pass 1: how high does usable memory go? Determines bitmap size. */
     highest_usable_addr = find_highest_usable(map);
     if (highest_usable_addr == 0)
-        PANIC("Error: pmm has no usable memory regions");
+        PANIC("pmm has no usable memory regions");
 
     total_frames = (size_t)(highest_usable_addr / PMM_PAGE_SIZE);
     bitmap_bytes = (total_frames + 7) / 8;
@@ -132,7 +132,7 @@ void pmm_init(void) {
     }
 
     if (bitmap == NULL)
-        PANIC("Error: pmm has no usable region large enough for the bitmap");
+        PANIC("pmm has no usable region large enough for the bitmap");
 
     /* Pass 3: mark everything used, then clear usable regions. */
     for (size_t i = 0; i < bitmap_bytes; i++)
@@ -146,7 +146,7 @@ void pmm_init(void) {
 
         /* Assert the alignment guarantee for usable entries. */
         if ((e->base & (PMM_PAGE_SIZE - 1)) != 0)
-            PANIC("Error: pmm usable regions are not page-aligned");
+            PANIC("pmm usable regions are not page-aligned");
 
         size_t start_frame = (size_t)(e->base / PMM_PAGE_SIZE);
         size_t end_frame   = (size_t)((e->base + e->length) / PMM_PAGE_SIZE);

@@ -13,7 +13,7 @@
  * Map/unmap operate on 4 KiB pages. Huge pages inherited from Limine (HHDM)
  * are left intact; do not try to map/unmap inside those ranges.
  *
- * No locking — same single-threaded boot assumption as the PMM. */
+ * No locking, same single-threaded boot assumption as the PMM. */
 
 #define VMM_PAGE_SIZE 4096
 
