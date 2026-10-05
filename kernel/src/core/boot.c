@@ -29,6 +29,12 @@ static volatile struct limine_hhdm_request hhdm_request = {
     .revision = 0
 };
 
+__attribute__((used, section(".limine_requests")))
+static volatile struct limine_executable_address_request executable_address_request = {
+    .id = LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID,
+    .revision = 0
+};
+
 __attribute__((used, section(".limine_requests_start")))
 static volatile uint64_t limine_requests_start_marker[] = LIMINE_REQUESTS_START_MARKER;
 
@@ -58,4 +64,8 @@ uint64_t boot_hhdm_offset(void) {
 
 bool boot_memory_ok(void) {
     return memmap_request.response != NULL && hhdm_request.response != NULL;
+}
+
+struct limine_executable_address_response *boot_executable_address(void) {
+    return executable_address_request.response;
 }

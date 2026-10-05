@@ -13,6 +13,7 @@
 #include <lib/string.h>
 #include <core/version.h>
 #include <core/pmm.h>
+#include <core/vmm.h>
 
 #define SHELL_LINE_MAX  128
 #define SHELL_ARG_MAX   8
@@ -183,6 +184,60 @@ static int cmd_memtest(int argc, char **argv) {
     return 0;
 }
 
+static int cmd_vmm(int argc, char **argv) {
+    (void)argc; (void)argv;
+    kprintf("VMM root (CR3 phys): 0x%llx\n", (unsigned long long)vmm_root_phys());
+    kprintf("Dynamic map window:  0x%llx\n", (unsigned long long)VMM_DYNAMIC_BASE);
+    kprintf("shell_run phys:      0x%llx\n",
+            (unsigned long long)vmm_translate((uint64_t)(uintptr_t)shell_run));
+    return 0;
+}
+
+static int cmd_vmtest(int argc, char **argv) {
+    (void)argc; (void)argv;
+
+    uint64_t phys = pmm_alloc();
+    if (phys == 0) {
+        kprintf("vmtest: pmm_alloc failed\n");
+        return 1;
+    }
+
+    uint64_t virt = VMM_DYNAMIC_BASE;
+    if (!vmm_map(virt, phys, VMM_WRITE | VMM_NX)) {
+        kprintf("vmtest: vmm_map failed\n");
+        pmm_free(phys, 1);
+        return 1;
+    }
+
+    volatile uint64_t *p = (volatile uint64_t *)virt;
+    *p = 0xD00DBEEFCAFEBABEull;
+    if (*p != 0xD00DBEEFCAFEBABEull) {
+        kprintf("vmtest: readback mismatch\n");
+        return 1;
+    }
+
+    uint64_t got = vmm_translate(virt);
+    if (got != phys) {
+        kprintf("vmtest: translate 0x%llx != phys 0x%llx\n",
+                (unsigned long long)got, (unsigned long long)phys);
+        return 1;
+    }
+
+    if (!vmm_unmap(virt)) {
+        kprintf("vmtest: unmap failed\n");
+        return 1;
+    }
+    if (vmm_translate(virt) != 0) {
+        kprintf("vmtest: still mapped after unmap\n");
+        return 1;
+    }
+
+    pmm_free(phys, 1);
+    kprintf("vmtest: map/write/translate/unmap ok (phys=0x%llx)\n",
+            (unsigned long long)phys);
+    return 0;
+}
+
 /*  line input  */
 
 /* Read one line from the keyboard into buf (up to cap-1 chars).
@@ -284,6 +339,8 @@ static int cmd_version(int argc, char **argv);
 static int cmd_exts(int argc, char **argv);
 static int cmd_panic(int argc, char **argv);
 static int cmd_halt(int argc, char **argv);
+static int cmd_vmm(int argc, char **argv);
+static int cmd_vmtest(int argc, char **argv);
 
 struct command {
     const char *name;
@@ -301,8 +358,10 @@ static const struct command commands[] = {
     { "halt",    "Stop kernel",             cmd_halt },
     { "mem",     "Memory status",           cmd_mem },
     { "memmap",  "Memory dump",             cmd_memmap },
-    { "pages",   "PMM status)",             cmd_pages },
+    { "pages",   "PMM status",              cmd_pages },
     { "memtest", "PMM self-test",           cmd_memtest },
+    { "vmm",     "VMM status",              cmd_vmm },
+    { "vmtest",  "VMM self-test",           cmd_vmtest },
 };
 #define NCOMMANDS (sizeof commands / sizeof commands[0])
 

@@ -25,4 +25,8 @@ uint64_t boot_hhdm_offset(void);
 /* True if the memory map and HHDM offset are both available. */
 bool boot_memory_ok(void);
 
+/* Physical and virtual bases of the loaded kernel image, or NULL if absent.
+ * Use these (not MEMMAP_EXECUTABLE_AND_MODULES) when translating kernel VAs. */
+struct limine_executable_address_response *boot_executable_address(void);
+
 #endif
