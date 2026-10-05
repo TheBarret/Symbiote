@@ -97,6 +97,6 @@ Commands: 'mem', 'memmap', 'pages' and 'memtest'.
 
 **Physical Memory Manager**  
 `src/core/pmm.c`, `src/core/pmm.h` bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
-Reserves bitmap, kernel image, framebuffer, frame 0. (API: pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys).  
+Reserves bitmap, kernel image, framebuffer, frame 0. *(API REF: `pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys`)*.  
 
 ---
