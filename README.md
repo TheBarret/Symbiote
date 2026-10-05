@@ -2,118 +2,92 @@
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine,  
 developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](https://github.com/TheBarret/Kernel)
 
-
 <img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/359926a7-42e1-4ac2-961f-b4eab59bd301" />
 
-# Currently working on
+---
 
-* Physical memory manager (PMM) that owns physical frames.
-* Virtual memory manager (VMM) that owns the current address space and can create, destroy, and modify 4 KiB mappings in it.
-* HHDM as a persistent direct map for RAM, unchanged and still used by everything that existed before.
-* Safe path for custom subsystems to map a physical address that isn't in HHDM (MMIO, a PCI BAR, the LAPIC) at a chosen virtual address.
-* W^X on the kernel's own sections, applied at boot.
+## Operational
 
-# Changelog and Activity
+**Boot**  
+Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
+Memory map and HHDM offset are queried from the bootloader.  
 
-**Boot and protocol**  
-- Limine boots the kernel from an ISO under both BIOS and UEFI. Hybrid ISO assembled by the master `Makefile`.
-- `boot_protocol_ok()` verifies Limine's revision against `LIMINE_BASE_REVISION(6)`. On mismatch, kernel halts silently. (`core/boot.c`)
-- `boot_framebuffer()` returns the first Limine framebuffer or NULL. (`core/boot.c`)
-
-**Hardware primitives**  
-- Port I/O: `outb`, `inb`, `inw`, `insw`, `outsw`. (`core/cpu.h`)
-- Interrupt control: `cpu_cli`, `cpu_sti`. (`core/cpu.h`)
-- `cpu_halt_forever()`: disables interrupts, halts forever. (`core/cpu.h`)
-
-**Console system**  
-- A fixed table of up to 4 `console_ops` sinks. Registration is append-only; overflow is silent. (`core/console.c`)
-- Every `console_write` forwards raw bytes to every registered sink and appends them to a 16 KiB ring buffer. (`core/console.c`)
-- Late-attaching consoles receive the whole boot log (or the last 16 KiB of it) at registration time. (`core/console.c`)
-
-**Serial console**  
-- COM1 at 0x3F8 brought up at 115200 8N1, FIFOs enabled, interrupts off. (`core/serial.c`)
-- `\n` → `\r\n` translation per-sink. (`core/serial.c`)
-- `serial_putc` has a bounded spin, so a dead UART cannot hang the kernel. (`core/serial.c`)
+**Consoles**  
+Two independent output paths, serial (COM1, 115200 8N1) and framebuffer (via flanterm), fed by one formatter.  
+Every byte written anywhere is also kept in a 16 KiB ring buffer,  
+so a console that comes up late receives the entire boot log at registration.  
 
 **Formatter**  
-- `kprintf`, `kvprintf`: formatted output to every console, buffered at 128 bytes per call. (`core/kprintf.c`)
-- `ksnprintf`, `kvsnprintf`: same formatter into a caller-supplied buffer, with snprintf truncation contract. (`core/kprintf.c`)
-- Supported: `%c %s %d %i %u %x %X %p %%`, flags `-` and `0`, width (number or `*`), length modifiers `l ll z` (all 64-bit). (`core/kprintf.h`)
-- NULL `%s` prints `(null)`. Unknown conversions print literally. (`core/kprintf.c`)
+`kprintf` and `ksnprintf`, with the standard set of integer, string, and pointer conversions, `-`/`0` flags,  
+width (literal or `*`), and `l`/`ll`/`z` length modifiers. Compiler format-string checking on every call.  
 
-**Extension system**  
-- Extensions are `static const struct sym_ext` placed in `.symbiote_ext` by the `SYM_EXTENSION` macro. (`core/ext.h`)
-- The linker script places `__symbiote_ext_start` and `__symbiote_ext_end` around the section. (`linker-scripts/x86_64.lds`)
-- `ext_init_all()` walks priority levels in ascending order using a selection scan (no sort, no mutation). Failures are logged and skipped; boot continues. (`core/ext.c`)
-- `ext_current()` returns the name of the extension whose init is running, which the panic handler reads. (`core/ext.c`)
-- `ext_count()` returns the number of registered extensions. (`core/ext.c`)
-- Priority levels: `CONSOLE=0`, `DRIVER=10`, `FS=20`, `SERVICE=30`, `APPLET=40`. (`core/ext.h`)
-- Removing an extension from `EXTENSIONS` removes its code from the image (`--gc-sections`). (kernel `GNUmakefile`)
+**Keyboard and shell**  
+Polled PS/2 driver with controller self-test, scancode-set configuration via controller translation,  
+extended-key handling, modifier tracking, and device separation (keyboard vs mouse bytes).  
+Interactive shell with a line editor and command dispatch.  
 
-**Extensions shipped**  
-- `fbcon`: framebuffer console via flanterm, phosphor green on near-black, only accepts 32-bit RGB framebuffers. Registers at `EXT_PRIO_CONSOLE`. (`ext/fbcon/fbcon.c`)
-- `hello`: one-line smoke test at `EXT_PRIO_APPLET`. Optional compile-time panic via `-DSYM_TEST_PANIC`. (`ext/hello.c`)
+**Memory**
+- **Physical**: 
+  bitmap page allocator initialized from the bootloader's memory map, with a self-test that round-trips several thousand frames. Hands out 4 KiB frames and contiguous runs.
+- **Virtual**:  
+  4-level page tables cloned from Limine, CR3 taken over, W^X applied to kernel sections,  
+  and a small API for creating and modifying mappings in the current address space.  
+- **Heap**:  
+  chunked free list with block headers and coalescing. `kmalloc`, `kfree`, `kzalloc`, `krealloc`. 
+  Debug build (`-DSYM_MEMDEBUG`) adds header magic, poison on free and alloc, and owner tagging.  
 
-**Panic and assertion**  
-- `PANIC(...)` and `ASSERT(cond)` macros. (`core/panic.h`)
-- `panic_at()` disables interrupts, guards against re-entry, dumps registers, prints the active extension, walks the frame-pointer chain (bounded to 16 frames with alignment and kernel-half checks), and halts. (`core/panic.c`)
-- **The panic path is compiled and linked but **has not been exercised** on this machine yet.**
+**Extensions**  
+Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant,  
+removable from the image by name.  
 
-**Memory and string primitives**  
-- `memcpy`, `memset`, `memmove`, `memcmp` exist as real symbols (compiler fallback) and are routed to compiler builtins at normal call sites via macros. (`lib/mem.c`, `lib/mem.h`)
-- `strlen`, `strcmp`, `strncmp`: standard behavior including the unsigned-char comparison rule in the `str*` functions. (`lib/string.c`, `lib/string.h`)
-
-**Boot sequence**  
-- `kmain` verifies protocol → brings up serial → prints version → runs all extensions → prints readiness banner with `ext_count()` → halts. (`src/main.c`)
-
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/f58a6ece-fbc9-41b1-b44b-a0d4cb575248" />  
-
-*early shell testing*
-
-**Version header**  
-`src/core/version.h` now holds `SYM_VERSION`, and both `main.c` and `shell.c` include it.   
-The duplication that was flagged in the shell pass is gone. One source of truth for the version string.  
-
-**Keyboard driver**   
-`src/core/keyboard.h` / `keyboard.c` went through three real fixes:
-- The API changed from `char kbd_poll(void)` to `enum kbd_event kbd_poll(char *out)`, with distinct events for "no key", "character", "special key", and "unknown scancode". Modifier events and unrecognized scancodes are no longer conflated with "nothing happened".
-- `kbd_init()` now returns `bool`. It runs the PS/2 self-test (`0xAA`), reads the controller configuration byte, sets translation on, clears the disable-clock bit, and re-enables the device. On a machine with no controller, it returns `false` and the shell halts with a message instead of silently blocking on a nonexistent keyboard.
-- Scancode set is now handled by the controller's translation, not by asking the device to switch to set 1. That was the fix for the "random characters" symptom: the device was emitting set 2 and the tables were set 1. Turning translation on makes the controller do the conversion, which is what every real PS/2 driver does.
-- The AUXBUF bit (0x20 of port 0x64) is now checked in `kbd_poll`. Bytes from the mouse are consumed and dropped instead of being decoded as scancodes. That was the fix for "moving the mouse produces characters" and "alt-tab scrambles the keyboard".
-
-**Shell**  
-`src/core/shell.c` runs at `kmain`'s end, replaces the halt. Seven commands: `help`, `echo`, `clear`, `version`, `exts`, `panic`, `halt`.  
-Line editor handles backspace. Tokenizer splits on spaces and tabs in place. Nonzero exit codes from commands are reported.  
-The prompt loop never returns, which is why the shell is core and not an extension.  
-
-**Bugs fixed:**  
-1. Random characters from set-1/set-2 mismatch → fixed by enabling controller translation.
-2. Characters appearing when the mouse moved → fixed by checking AUXBUF before reading from 0x60.
-
-## Memory
-
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/39cbe07d-ced6-4ebb-b59b-64334e542c70" />  
-
-
-**Bootloader and version**  
-* `src/core/boot.c` query Limine for the memory map and HHDM offset. New accessors: `boot_memmap(), boot_hhdm_offset(), boot_memory_ok()`.  
-* `src/core/version.h` updated with prefixer for more cohesive screen output.  
-
-**Physical Memory Manager**  
-`src/core/pmm.c`, `src/core/pmm.h`  
-* bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
-* Reserves bitmap, kernel image, framebuffer, frame 0.
-* Exposes `pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys`  
-
-<img width="604" height="482" src="https://github.com/user-attachments/assets/12318ac5-1daf-4e14-9bd5-7c97be65fe3f" />  
-
-
-**Visual Memory Manager**  
-`src/core/vmm.c`, `src/core/vmm.h` 
-* clones Limine's existing tables into fresh PMM-backed frames (clone_level recursing down all four levels).  
-* Switches CR3 to the cloned root.  
-* Reapplies W^X permissions to the kernel's own sections.  
-* Exposes `vmm_map, vmm_unmap, vmm_protect, vmm_translate, vmm_root_phys`
-* Leaves HHDM huge pages untouched
+**Diagnostics**  
+Panic handler with register dump, frame-pointer backtrace, and active-extension reporting.   
+`klog` boot log with a fixed-width tag column and per-subsystem coloring.  
 
 ---
+
+## Not operational
+
+- No interrupts. No IDT, no GDT setup, no timer, no APIC.
+- No block device driver, no PCI enumeration.
+- No filesystem (in progress: read-only, loaded as a Limine module).
+- No processes, no user mode, no syscalls.
+- No SMP. Single-core assumption throughout, documented where it matters.
+- No swap, no demand paging, no copy-on-write.
+
+---
+
+## Layout
+
+```
+kernel/
+  src/
+    main.c            boot sequence
+    core/             boot, cpu, console, ext, klog, kprintf, panic, pmm, vmm, heap, keyboard, shell, serial, version
+    lib/              mem, string
+    ext/              fbcon, hello, test
+  linker-scripts/     x86_64 memory layout
+  GNUmakefile         kernel build
+GNUmakefile           ISO assembly, QEMU targets
+limine.conf           bootloader config
+```
+
+---
+
+## Building
+
+Requires a recent GCC or Clang, GNU Make, and `xorriso`.  
+First build fetches Limine and the freestanding headers, then compiles the kernel and assembles a hybrid BIOS/UEFI ISO.  
+
+```
+  make                # build everything, produce symbiote-x86_64.iso
+  make run-bios       # boot under QEMU, BIOS path
+  make run            # boot under QEMU, UEFI path
+  make run-serial     # boot headless, serial console to the terminal
+  make -C kernel size # report kernel size
+```
+
+To build without the framebuffer console (serial-only, smaller image):
+```
+  make EXTENSIONS="hello"
+```
