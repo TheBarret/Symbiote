@@ -8,6 +8,8 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/6c2d4280-58f3-440e-b61f-b23b8bcf3553" />  
+
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset are queried from the bootloader.  
@@ -43,6 +45,9 @@ removable from the image by name.
 **Diagnostics**  
 Panic handler with register dump, frame-pointer backtrace, and active-extension reporting.   
 `klog` boot log with a fixed-width tag column and per-subsystem coloring.  
+
+<img width="769" height="546" alt="diagnostics" src="https://github.com/user-attachments/assets/5251c0e8-c204-44c1-946d-d1072d9c17e9" />
+
 
 ---
 
