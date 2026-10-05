@@ -96,13 +96,8 @@ The prompt loop never returns, which is why the shell is core and not an extensi
 
 
 **Bootloader and version**  
-`src/core/boot.c` query Limine for the memory map and HHDM offset. New accessors: `boot_memmap(), boot_hhdm_offset(), boot_memory_ok()`.  
-`src/core/version.h` updated with prefixer for more cohesive screen output.  
-
-**Memory Shell functions**  
-Commands: 'mem', 'memmap', 'pages' and 'memtest'.  
-
-<img width="569" height="96" src="https://github.com/user-attachments/assets/3546d2ea-d642-46dd-bfec-1b08f4afe272" />  
+* `src/core/boot.c` query Limine for the memory map and HHDM offset. New accessors: `boot_memmap(), boot_hhdm_offset(), boot_memory_ok()`.  
+* `src/core/version.h` updated with prefixer for more cohesive screen output.  
 
 **Physical Memory Manager**  
 `src/core/pmm.c`, `src/core/pmm.h`  
