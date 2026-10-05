@@ -81,3 +81,21 @@ The prompt loop never returns, which is why the shell is core and not an extensi
 1. Random characters from set-1/set-2 mismatch → fixed by enabling controller translation.
 2. Characters appearing when the mouse moved → fixed by checking AUXBUF before reading from 0x60.
 
+## Memory Layers
+
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/39cbe07d-ced6-4ebb-b59b-64334e542c70" />  
+
+
+**Bootloader**  
+`src/core/boot.c` query Limine for the memory map and HHDM offset. New accessors: `boot_memmap(), boot_hhdm_offset(), boot_memory_ok()`.  
+
+**Memory Shell functions**  
+Commands: 'mem', 'memmap', 'pages' and 'memtest'.  
+
+<img width="569" height="96" src="https://github.com/user-attachments/assets/3546d2ea-d642-46dd-bfec-1b08f4afe272" />  
+
+**Physical Memory Manager**  
+`src/core/pmm.c`, `src/core/pmm.h` bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
+Reserves bitmap, kernel image, framebuffer, frame 0. (API: pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys).  
+
+---
