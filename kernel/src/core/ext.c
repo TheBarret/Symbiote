@@ -1,5 +1,6 @@
 #include <limits.h>
 #include <stddef.h>
+#include <core/version.h>
 #include <core/ext.h>
 #include <core/kprintf.h>
 
@@ -35,9 +36,9 @@ void ext_init_all(void) {
             int rc = e->init();
             current = NULL;
             if (rc == 0)
-                kprintf("[ext] %-8s ok\n", e->name);
+                kprintf("%s %-8s enabled\n", SYM_PREFIX, e->name);
             else
-                kprintf("\x1b[91m[ext] %-8s FAILED (%d)\x1b[0m\n", e->name, rc);
+                kprintf("%s %-8s failed, %d\n", SYM_PREFIX, e->name, rc);
         }
         last = next;
     }
