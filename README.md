@@ -10,7 +10,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 * Physical memory manager (PMM) that owns physical frames.
 * Virtual memory manager (VMM) that owns the current address space and can create, destroy, and modify 4 KiB mappings in it.
 * HHDM as a persistent direct map for RAM, unchanged and still used by everything that existed before.
-* Safe path for a subsystems to map a physical address that isn't in HHDM (MMIO, a PCI BAR, the LAPIC) at a chosen virtual address.
+* Safe path for custom subsystems to map a physical address that isn't in HHDM (MMIO, a PCI BAR, the LAPIC) at a chosen virtual address.
 * W^X on the kernel's own sections, applied at boot.
 
 # Changelog and Activity
