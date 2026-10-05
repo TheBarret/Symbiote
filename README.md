@@ -105,15 +105,20 @@ Commands: 'mem', 'memmap', 'pages' and 'memtest'.
 <img width="569" height="96" src="https://github.com/user-attachments/assets/3546d2ea-d642-46dd-bfec-1b08f4afe272" />  
 
 **Physical Memory Manager**  
-`src/core/pmm.c`, `src/core/pmm.h` bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
-Reserves bitmap, kernel image, framebuffer, frame 0. *(API REF: `pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys`)*.  
+`src/core/pmm.c`, `src/core/pmm.h`  
+* bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
+* Reserves bitmap, kernel image, framebuffer, frame 0.
+* Exposes `pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys`  
+
+<img width="604" height="482" src="https://github.com/user-attachments/assets/12318ac5-1daf-4e14-9bd5-7c97be65fe3f" />  
+
 
 **Visual Memory Manager**  
 `src/core/vmm.c`, `src/core/vmm.h` 
 * clones Limine's existing tables into fresh PMM-backed frames (clone_level recursing down all four levels).  
 * Switches CR3 to the cloned root.  
 * Reapplies W^X permissions to the kernel's own sections.  
-* Exposes vmm_map, vmm_unmap, vmm_protect, vmm_translate, vmm_root_phys.
+* Exposes `vmm_map, vmm_unmap, vmm_protect, vmm_translate, vmm_root_phys`
 * Leaves HHDM huge pages untouched
 
 ---
