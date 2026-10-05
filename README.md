@@ -5,6 +5,13 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 <img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/359926a7-42e1-4ac2-961f-b4eab59bd301" />
 
+# Currently working on
+
+* Physical memory manager (PMM) that owns physical frames.
+* Virtual memory manager (VMM) that owns the current address space and can create, destroy, and modify 4 KiB mappings in it.
+* HHDM as a persistent direct map for RAM, unchanged and still used by everything that existed before.
+* Safe path for a subsystems to map a physical address that isn't in HHDM (MMIO, a PCI BAR, the LAPIC) at a chosen virtual address.
+* W^X on the kernel's own sections, applied at boot.
 
 # Changelog and Activity
 
@@ -100,5 +107,13 @@ Commands: 'mem', 'memmap', 'pages' and 'memtest'.
 **Physical Memory Manager**  
 `src/core/pmm.c`, `src/core/pmm.h` bitmap-based physical page allocator. Placed in usable RAM via HHDM, sized from the highest usable address.  
 Reserves bitmap, kernel image, framebuffer, frame 0. *(API REF: `pmm_alloc, pmm_alloc_contig, pmm_free, pmm_get_stats, pmm_phys_to_virt, pmm_virt_to_phys`)*.  
+
+**Visual Memory Manager**  
+`src/core/vmm.c`, `src/core/vmm.h` 
+* clones Limine's existing tables into fresh PMM-backed frames (clone_level recursing down all four levels).  
+* Switches CR3 to the cloned root.  
+* Reapplies W^X permissions to the kernel's own sections.  
+* Exposes vmm_map, vmm_unmap, vmm_protect, vmm_translate, vmm_root_phys.
+* Leaves HHDM huge pages untouched
 
 ---
