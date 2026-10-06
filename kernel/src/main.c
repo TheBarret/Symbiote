@@ -3,6 +3,7 @@
 #include <core/boot.h>
 #include <core/cpu.h>
 #include <core/ext.h>
+#include <core/cmd.h>
 #include <core/heap.h>
 #include <core/klog.h>
 #include <core/kprintf.h>
@@ -28,7 +29,7 @@ void kmain(void) {
 
     ext_init_all();
 
-    klog("extensions (%zu loaded)...ok\n", ext_count());
+    klog("extensions (shared: %zu, system: %zu)...ok\n", ext_count(), cmd_count());
 
     pmm_init();
 
