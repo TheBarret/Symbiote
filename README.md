@@ -8,7 +8,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/6c2d4280-58f3-440e-b61f-b23b8bcf3553" />  
+<img width="1290" height="850" alt="image" src="https://github.com/user-attachments/assets/fdbdc72d-e714-4956-976c-ab3ddd40b574" />  
 
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
