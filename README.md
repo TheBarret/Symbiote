@@ -30,7 +30,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
             - writes to COM1 registers
             - console_register(&serial_ops)  ── core/console.c now has 1 sink
     
-        [5] Greeter procedure
+        [5] Logger functionality
             - kprintf → format → con_emit → console_write
             - console_write → serial_write
             - ring buffer captures the same bytes for replay later
