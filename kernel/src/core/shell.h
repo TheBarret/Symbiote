@@ -1,10 +1,13 @@
 #ifndef CORE_SHELL_H
 #define CORE_SHELL_H
 
+#define SHELL_VERSION "0.1.3"
+
 /* Interactive command loop.
- * Reads lines from the keyboard, dispatches the first word against a
- * fixed table of built-in commands, and echoes the result to every
- * registered console.
+ * Reads a line from the keyboard, splits it into words,
+ * and hands the words to the command registry (core/cmd.h),
+ * which finds the command, checks the arguments against the parameters it declared, and runs it.
+ * The shell itself knows no commands: they live in extensions (src/ext/cmd_*.c).
  *
  * Never returns. Call it from kmain after ext_init_all(). */
 __attribute__((noreturn))
