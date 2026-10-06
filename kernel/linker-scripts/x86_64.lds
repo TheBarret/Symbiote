@@ -25,22 +25,28 @@ SECTIONS
 
     /* Define a section to contain the Limine requests and assign it to its own PHDR */
     .limine_requests : {
+        __kernel_start = .;
+        __limine_reqs_start = .;
         KEEP(*(.limine_requests_start))
         KEEP(*(.limine_requests))
         KEEP(*(.limine_requests_end))
+        __limine_reqs_end = .;
     } :limine_requests
 
     /* Move to the next memory page for .text */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     .text : {
+        __text_start = .;
         *(.text .text.*)
+        __text_end = .;
     } :text
 
     /* Move to the next memory page for .rodata */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     .rodata : {
+        __rodata_start = .;
         *(.rodata .rodata.*)
     } :rodata
 
@@ -53,6 +59,12 @@ SECTIONS
         KEEP(*(.symbiote_ext))
         __symbiote_ext_end = .;
     } :rodata
+    /* Symbiote extension for interior built-in shell command discovery */
+    .symbiote_cmd : ALIGN(8) {
+        __symbiote_cmd_start = .;
+        KEEP(*(.symbiote_cmd))
+        __symbiote_cmd_end = .;
+    }
 
     /* Add a .note.gnu.build-id output section in case a build ID flag is added to the */
     /* linker command. */
@@ -62,8 +74,10 @@ SECTIONS
 
     /* Move to the next memory page for .data */
     . = ALIGN(CONSTANT(MAXPAGESIZE));
+    __rodata_end = .;
 
     .data : {
+        __data_start = .;
         *(.data .data.*)
     } :data
 
@@ -75,6 +89,10 @@ SECTIONS
         *(.bss .bss.*)
         *(COMMON)
     } :data
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+    __data_end = .;
+    __kernel_end = .;
 
     /* Discard .note.* and .eh_frame* since they may cause issues on some hosts. */
     /DISCARD/ : {
