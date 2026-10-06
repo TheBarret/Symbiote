@@ -70,7 +70,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
                 [9b] example_init (ext/test.c)          prio=40
                      - Runs no logic (example template)
                      - returns 0
-                [9c] shell dispatcher commands are discovered by cmd.c)
+                [9c] shell dispatcher commands are discovered by cmd.c
     
         [10] Extensions are ready to be used
     
