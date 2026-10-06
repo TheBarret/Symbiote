@@ -41,7 +41,7 @@ Interactive shell with a line editor and command dispatch.
 **Extensions**  
 Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant,  
 removable from the image by name.  
-*Shell.c has migrated all its command structures into extension based calling convention, see ref: `/src/kernel/cmd.h`*  
+*Shell.c has migrated all its command structures into extension based calling convention, see ref: `Symbiote/kernel/src/core/cmd.h`*  
 
 **Diagnostics**  
 Panic handler with register dump, frame-pointer backtrace, and active-extension reporting.   
