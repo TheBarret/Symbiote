@@ -2,7 +2,7 @@
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine,  
 developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](https://github.com/TheBarret/Kernel)
 
-<img width="1024" height="559" alt="image" src="https://github.com/user-attachments/assets/359926a7-42e1-4ac2-961f-b4eab59bd301" />
+<img width="1024" height="559" alt="logo" src="https://github.com/user-attachments/assets/808c960e-6db9-469d-93ed-fd51f01e92cf" />
 
 ---
 
