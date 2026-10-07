@@ -8,58 +8,85 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
-<img width="1290" height="850" alt="image" src="https://github.com/user-attachments/assets/fdbdc72d-e714-4956-976c-ab3ddd40b574" />  
-
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
-Memory map and HHDM offset are queried from the bootloader.  
+Memory map and HHDM offset queried from the bootloader.  
+ACPI RSDP and boot modules queried via the same request mechanism.  
 
 **Consoles**  
 Two independent output paths, serial (COM1, 115200 8N1) and framebuffer (via flanterm), fed by one formatter.  
 Every byte written anywhere is also kept in a 16 KiB ring buffer,  
 so a console that comes up late receives the entire boot log at registration.  
+`console_putc` provides a character-at-a-time path for interactive echo without going through the formatter.
 
 **Formatter**  
 `kprintf` and `ksnprintf`, with the standard set of integer, string, and pointer conversions, `-`/`0` flags,  
 width (literal or `*`), and `l`/`ll`/`z` length modifiers. Compiler format-string checking on every call.  
 
-**Keyboard and shell**  
-Polled PS/2 driver with controller self-test, scancode-set configuration via controller translation,  
-extended-key handling, modifier tracking, and device separation (keyboard vs mouse bytes).  
-Interactive shell with a line editor and command dispatch.  
+**Keyboard**  
+Interrupt-driven PS/2 driver on IRQ1.  
+Controller self-test, scancode-set configuration via controller translation, extended-key handling, 
+modifier tracking, and device separation (keyboard vs mouse bytes via the AUXBUF status bit).  
+Raw scancodes are pushed into a ring buffer by the IRQ handler;  
+decode runs in thread context, so the interrupt path never prints or allocates.  
+`kbd_getchar` blocks with `sti; hlt`, waking only when a key arrives.  
+
+**Shell**  
+Interactive line editor with history-free backspace, in-place tokenizer,  
+and a command dispatcher driven entirely by a link-time registry.  
+The shell itself is a dumb parser; every command is an extension.  
+Only `help` and `halt` remain built-in, on the principle that the shell should always know how to describe itself,  
+and always know how to stop.  
 
 **Memory**
-- **Physical**: 
-  bitmap page allocator initialized from the bootloader's memory map, with a self-test that round-trips several thousand frames. Hands out 4 KiB frames and contiguous runs.
-- **Virtual**:  
-  4-level page tables cloned from Limine, CR3 taken over, W^X applied to kernel sections,  
+- **Physical**: bitmap page allocator initialized from the bootloader's memory map,  
+  with a self-test that round-trips several thousand frames.  
+  Hands out 4 KiB frames and contiguous runs. Bitmap placed in usable RAM via HHDM, not statically reserved.  
+- **Virtual**: 4-level page tables cloned from Limine, CR3 taken over, W^X applied to kernel sections,  
   and a small API for creating and modifying mappings in the current address space.  
-- **Heap**:  
-  chunked free list with block headers and coalescing. `kmalloc`, `kfree`, `kzalloc`, `krealloc`. 
+  `VMM_NOCACHE` supported for MMIO.  
+- **Heap**: chunked free list with block headers and immediate coalescing.  
+  `kmalloc`, `kfree`, `kzalloc`, `krealloc`. Grows by 256 KiB chunks from the PMM.  
   Debug build (`-DSYM_MEMDEBUG`) adds header magic, poison on free and alloc, and owner tagging.  
 
+**Interrupts**  
+GDT with a TSS and IST stacks for the double-fault vector.  
+IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
+NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
+PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
+LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
+PIT at 1000 Hz driving a tick counter, `sleep_ms` and `uptime_ms`.  
+Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
+
 **Extensions**  
-Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant,  
-removable from the image by name.  
-*Shell.c has migrated all its command structures into extension based calling convention, see ref: `Symbiote/kernel/src/core/cmd.h`*  
+Link-time discovery via a dedicated linker section, priority-ordered initialization, 
+failure-tolerant, removable from the image by name.  
+A parallel command registry (`SYM_COMMAND`, section `.symbiote_cmd`) does the same for shell commands,  
+with declarative parameter specs, centralized argument validation, and a boot-time self-check  
+that catches duplicate names and malformed specs.  
+
+**Forth**  
+Small stack-based arithmetic evaluator, usable interactively (`forth <expr>`), 
+or as a boot-time script loaded by Limine as a module.  
+Used as an ALU, not as a system language: it takes numbers in, produces numbers out,  
+and knows nothing about strings, files, or the kernel outside of a small set of registered words.  
 
 **Diagnostics**  
-Panic handler with register dump, frame-pointer backtrace, and active-extension reporting.   
+Panic handler with register dump, frame-pointer backtrace, exception vector decoding,  
+and active-extension / active-command reporting.  
 `klog` boot log with a fixed-width tag column and per-subsystem coloring.  
-
-<img width="769" height="546" alt="diagnostics" src="https://github.com/user-attachments/assets/5251c0e8-c204-44c1-946d-d1072d9c17e9" />
-
 
 ---
 
 ## Not operational
 
-- No interrupts. No IDT, no GDT setup, no timer, no APIC.
 - No block device driver, no PCI enumeration.
-- No filesystem (in progress: read-only, loaded as a Limine module).
+- No filesystem (planned: read-only, loaded as a Limine module).
 - No processes, no user mode, no syscalls.
 - No SMP. Single-core assumption throughout, documented where it matters.
 - No swap, no demand paging, no copy-on-write.
+- No APIC timer (PIT only), no IOAPIC, no MSI.
+- No hardware inspection beyond the memory map and framebuffer (planned: CPUID, ACPI, PCI, SMBIOS).
 
 ---
 
@@ -69,9 +96,11 @@ Panic handler with register dump, frame-pointer backtrace, and active-extension 
 kernel/
   src/
     main.c            boot sequence
-    core/             boot, cpu, console, ext, klog, kprintf, panic, pmm, vmm, heap, keyboard, shell, serial, version
+    core/             boot, cmd, console, cpu, ext, gdt, heap, idt, isr, keyboard, klog,
+                      kprintf, panic, pic, pmm, serial, shell, timer, version, vmm
     lib/              mem, string
-    ext/              fbcon, hello, test
+    ext/              fbcon, hello, cmd_heap, cmd_mem, cmd_sys, forth, selftest
+    isr_stubs.S       interrupt entry stubs (GNU as)
   linker-scripts/     x86_64 memory layout
   GNUmakefile         kernel build
 GNUmakefile           ISO assembly, QEMU targets
@@ -83,7 +112,7 @@ limine.conf           bootloader config
 ## Building
 
 Requires a recent GCC or Clang, GNU Make, and `xorriso`.  
-First build fetches Limine and the freestanding headers, then compiles the kernel and assembles a hybrid BIOS/UEFI ISO.  
+First build fetches Limine and the freestanding headers, then compiles the kernel and assembles a hybrid BIOS/UEFI ISO.
 
 ```
   make                # build everything, produce symbiote-x86_64.iso
@@ -93,7 +122,5 @@ First build fetches Limine and the freestanding headers, then compiles the kerne
   make -C kernel size # report kernel size
 ```
 
-To build without the framebuffer console (serial-only, smaller image):
-```
-  make EXTENSIONS="hello"
-```
+Build with `CPPFLAGS=-DSYM_MEMDEBUG` to enable heap header magic, poison, and owner tagging.  
+Build with `EXTENSIONS="hello"` for a headless image with only the smoke-test extension.
