@@ -90,7 +90,7 @@ static int test_pmm_contig(void) {
         return 0;   /* not a failure; the allocator may legitimately reuse elsewhere */
     }
     pmm_free(again, N);
-    kprintf("  pmm_contiguous: ok\n");
+    kprintf("  pmm_contig: ok\n");
     return 0;
 }
 
