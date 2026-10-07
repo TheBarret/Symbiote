@@ -47,3 +47,21 @@ int memcmp(const void *a, const void *b, size_t n) {
     }
     return 0;
 }
+
+void *memchr(const void *s, int c, size_t n) {
+    const uint8_t *p = s;
+    uint8_t b = (uint8_t)c;
+    for (size_t i = 0; i < n; i++) {
+        if (p[i] == b)
+            return (void *)(p + i);
+    }
+    return NULL;
+}
+
+/* The volatile cast is the whole point: without it, the compiler is free
+ * to see the stores as dead and remove the call. */
+void explicit_bzero(void *p, size_t n) {
+    volatile uint8_t *v = p;
+    while (n--)
+        *v++ = 0;
+}
