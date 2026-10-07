@@ -107,4 +107,22 @@ static inline void cpu_halt_forever(void) {
         __asm__ volatile ("hlt");
 }
 
+/* CPUID handler */
+static inline void cpuid(uint32_t leaf, uint32_t subleaf,
+                        uint32_t *a, uint32_t *b, uint32_t *c, uint32_t *d) {
+    __asm__ volatile ("cpuid" : "=a"(*a), "=b"(*b), "=c"(*c), "=d"(*d)
+                              : "a"(leaf), "c"(subleaf));
+}
+
+/* PCI handlers */
+static inline void outl(uint16_t port, uint32_t val) {
+    __asm__ volatile ("outl %0, %1" : : "a"(val), "Nd"(port));
+}
+
+static inline uint32_t inl(uint16_t port) {
+    uint32_t val;
+    __asm__ volatile ("inl %1, %0" : "=a"(val) : "Nd"(port));
+    return val;
+}
+
 #endif
