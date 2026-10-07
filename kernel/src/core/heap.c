@@ -55,6 +55,7 @@ struct block_header_padded {
 struct chunk {
     struct chunk *next;
     uint64_t base_phys;     /* physical address of the chunk, for diagnostics */
+    size_t   size;          /* total bytes reserved for this chunk, from base_phys */
 };
 
 static struct chunk *chunks_head;
@@ -76,8 +77,6 @@ static void header_check(struct block_header *b, const char *where) {
 /*  chunk creation  */
 
 static struct chunk *chunk_create(size_t payload_bytes) {
-    /* Total chunk size = one chunk of memory.
-     * The chunk struct itself lives at the start of the chunk, followed by the block chain. */
     size_t total = HEAP_CHUNK_SIZE;
     if (payload_bytes + HDR_SIZE + sizeof(struct chunk) > total)
         total = payload_bytes + HDR_SIZE + sizeof(struct chunk) + HEAP_ALIGN;
@@ -92,12 +91,13 @@ static struct chunk *chunk_create(size_t payload_bytes) {
     struct chunk *c = (struct chunk *)base;
     c->next = NULL;
     c->base_phys = phys;
+    /* Record the size actually reserved so heapcheck can bound the chunk
+     * exactly, without assuming HEAP_CHUNK_SIZE. */
+    c->size = frames * PMM_PAGE_SIZE;
 
-    /* The rest of the chunk is one big free block. */
     struct block_header *first =
         (struct block_header *)(base + sizeof(struct chunk));
-    size_t first_size = total - sizeof(struct chunk);
-    /* Round down to HEAP_ALIGN so the sentinel at the end lines up. */
+    size_t first_size = c->size - sizeof(struct chunk);
     first_size &= ~(size_t)(HEAP_ALIGN - 1);
 
     first->size = first_size;
@@ -107,7 +107,6 @@ static struct chunk *chunk_create(size_t payload_bytes) {
     first->owner = NULL;
 #endif
 
-    /* Sentinel block at the very end of the chunk. */
     struct block_header *sent = (struct block_header *)((uint8_t *)first + first_size);
     sent->size = 0;
     sent->free = false;
@@ -116,7 +115,6 @@ static struct chunk *chunk_create(size_t payload_bytes) {
     sent->owner = NULL;
 #endif
 
-    /* Link into the chunk list. */
     c->next = chunks_head;
     chunks_head = c;
 
@@ -139,13 +137,10 @@ void heap_init(void) {
 
 /*  allocation  */
 
-/* Split a free block if the remainder is big enough to hold another block. */
 static void block_split(struct block_header *b, size_t wanted) {
-    /* wanted is the payload size requested, already rounded up.
-     * The block total size must be at least wanted + HDR_SIZE. */
     size_t min_total = wanted + HDR_SIZE;
     if (b->size < min_total + HDR_SIZE + HEAP_MIN_BLOCK_SIZE)
-        return;     /* not enough room to split into two useful blocks */
+        return;
 
     size_t new_size = b->size - min_total;
     struct block_header *rest = (struct block_header *)((uint8_t *)b + min_total);
@@ -159,11 +154,10 @@ static void block_split(struct block_header *b, size_t wanted) {
     b->size = min_total;
 }
 
-/* Coalesce b with the next block if both are free. Returns b. */
 static struct block_header *block_coalesce_next(struct block_header *b) {
     struct block_header *next = (struct block_header *)((uint8_t *)b + b->size);
     if (next->size == 0)
-        return b;               /* sentinel */
+        return b;
     if (!next->free)
         return b;
     b->size += next->size;
@@ -174,11 +168,17 @@ void *kmalloc(size_t size) {
     if (size == 0)
         size = 1;
 
-    /* Round payload up to alignment, then add header size. */
+    /* Reject sizes that would overflow the payload or total arithmetic below.
+     * HEAP_ALIGN is a power of two, so size + HEAP_ALIGN - 1 overflows iff
+     * size > SIZE_MAX - HEAP_ALIGN + 1, i.e. size > SIZE_MAX - (HEAP_ALIGN - 1). */
+    if (size > SIZE_MAX - (HEAP_ALIGN - 1))
+        return NULL;
+
     size_t payload = (size + HEAP_ALIGN - 1) & ~(size_t)(HEAP_ALIGN - 1);
+    if (payload > SIZE_MAX - HDR_SIZE)
+        return NULL;
     size_t total = payload + HDR_SIZE;
 
-    /* First-fit scan. */
     for (struct chunk *c = chunks_head; c; c = c->next) {
         struct block_header *b =
             (struct block_header *)((uint8_t *)c + sizeof(struct chunk));
@@ -197,16 +197,13 @@ void *kmalloc(size_t size) {
         }
     }
 
-    /* No fit. Grow by one chunk. */
     struct chunk *c = chunk_create(total);
     if (c == NULL)
         return NULL;
 
-    /* Retry on the new chunk (it is at the head). */
     struct block_header *b =
         (struct block_header *)((uint8_t *)c + sizeof(struct chunk));
     if (b->size < total) {
-        /* Should not happen: chunk_create sizes the chunk for `total`. */
         PANIC("heap: new chunk too small for the request");
     }
     block_split(b, payload);
@@ -254,16 +251,12 @@ void kfree(void *ptr) {
 
     b->free = true;
 
-    /* Coalesce forward, then to coalesce backward,
-     * we walk the chunk from its start until we find the block that precedes b.
-     * This is O(n) in blocks per chunk, which is fine for a heap that never gets large. */
     b = block_coalesce_next(b);
 
     for (struct chunk *c = chunks_head; c; c = c->next) {
         uint8_t *chunk_start = (uint8_t *)c + sizeof(struct chunk);
         uint8_t *chunk_end;
         {
-            /* Find the sentinel by walking. */
             struct block_header *w = (struct block_header *)chunk_start;
             while (w->size != 0)
                 w = (struct block_header *)((uint8_t *)w + w->size);
@@ -272,7 +265,6 @@ void kfree(void *ptr) {
         if ((uint8_t *)b < chunk_start || (uint8_t *)b >= chunk_end)
             continue;
 
-        /* b is in this chunk. Walk to find the block before it. */
         struct block_header *prev = NULL;
         struct block_header *w = (struct block_header *)chunk_start;
         while ((uint8_t *)w < (uint8_t *)b) {
@@ -303,14 +295,14 @@ void *krealloc(void *ptr, size_t new_size) {
     header_check(b, "krealloc");
 
     size_t old_payload = BLOCK_PAYLOAD_SIZE(b);
-    size_t new_payload = (new_size + HEAP_ALIGN - 1) & ~(size_t)(HEAP_ALIGN - 1);
+    size_t new_payload = (new_size > SIZE_MAX - (HEAP_ALIGN - 1))
+                       ? SIZE_MAX
+                       : (new_size + HEAP_ALIGN - 1) & ~(size_t)(HEAP_ALIGN - 1);
 
     if (new_payload <= old_payload) {
-        /* Shrink in place; do not split, to keep the API simple. */
         return ptr;
     }
 
-    /* Grow: allocate, copy, free. */
     void *fresh = kmalloc(new_size);
     if (fresh == NULL)
         return NULL;
@@ -352,7 +344,9 @@ void heapcheck(void) {
         struct block_header *b =
             (struct block_header *)((uint8_t *)c + sizeof(struct chunk));
         uint8_t *chunk_start = (uint8_t *)c;
-        uint8_t *chunk_end_limit = chunk_start + HEAP_CHUNK_SIZE + HEAP_ALIGN;
+        /* Use the recorded chunk size, not HEAP_CHUNK_SIZE, so a chunk
+         * grown for a large request is bounded correctly. */
+        uint8_t *chunk_end_limit = chunk_start + c->size;
         size_t seen = 0;
         while (b->size != 0) {
             if ((uint8_t *)b < chunk_start || (uint8_t *)b >= chunk_end_limit)

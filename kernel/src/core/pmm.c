@@ -99,6 +99,9 @@ static void reserve_special_regions(struct limine_memmap_response *map) {
     }
 }
 
+
+/* init */
+
 void pmm_init(void) {
     if (!boot_memory_ok())
         PANIC("Bootloader did not provide (memory) memmap or hhdm");
@@ -114,19 +117,27 @@ void pmm_init(void) {
     total_frames = (size_t)(highest_usable_addr / PMM_PAGE_SIZE);
     bitmap_bytes = (total_frames + 7) / 8;
 
-    /* Pass 2: place the bitmap in the first USABLE region with enough room. */
+    /* Pass 2: place the bitmap in the first USABLE region with enough room.
+     *
+     * Align the candidate base up first, then check the aligned base plus the bitmap size against the entry's end.
+     * A USABLE entry is required to be page-aligned,
+     * but doing the alignment first means a bootloader that violates the guarantee cannot cause the bitmap to extend past the entry. */
     size_t bitmap_pages = (bitmap_bytes + PMM_PAGE_SIZE - 1) / PMM_PAGE_SIZE;
+    uint64_t bitmap_span = (uint64_t)bitmap_pages * PMM_PAGE_SIZE;
 
     for (size_t i = 0; i < map->entry_count; i++) {
         const struct limine_memmap_entry *e = map->entries[i];
         if (e->type != LIMINE_MEMMAP_USABLE)
             continue;
-        if (e->length < (uint64_t)bitmap_pages * PMM_PAGE_SIZE)
+
+        uint64_t base = (e->base + PMM_PAGE_SIZE - 1) & ~(uint64_t)(PMM_PAGE_SIZE - 1);
+        /* Reject if the aligned base is already at or past the entry's end,
+         * or if the bitmap would not fit before the end. */
+        if (base >= e->base + e->length)
+            continue;
+        if (bitmap_span > (e->base + e->length) - base)
             continue;
 
-        /* Align the base up to a frame boundary (should already be,
-         * but the guarantee is only for USABLE entries and being defensive costs nothing). */
-        uint64_t base = (e->base + PMM_PAGE_SIZE - 1) & ~(uint64_t)(PMM_PAGE_SIZE - 1);
         bitmap = (uint8_t *)(base + hhdm);
         break;
     }
