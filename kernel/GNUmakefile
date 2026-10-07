@@ -12,7 +12,7 @@ override OUTPUT := symbiote
 # Built-in:
 # fbcon		: Console buffer (required)
 # cmd_heap 	: heap utility (tool)
-EXTENSIONS ?= fbcon system memory selftest forth
+EXTENSIONS ?= fbcon system memory selftest forth bf cpu
 
 # default is x86_64.
 ARCH := x86_64
