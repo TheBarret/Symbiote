@@ -54,20 +54,19 @@ and always know how to stop.
 
 **Interrupts**  
 
-<img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />  
-
 GDT with a TSS and IST stacks for the double-fault vector.  
 IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
 NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
+
+<img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />  
+
 PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
 LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
-PIT at 1000 Hz driving a tick counter, `sleep_ms` and `uptime_ms`.  
+
+PIT at `1000 Hz` driving a tick counter, `sleep_ms` and `uptime_ms`.  
 Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
 
 **Extensions**  
-
-<img width="546" height="263" alt="Extensions" src="https://github.com/user-attachments/assets/24c1b223-cb8a-4a3b-9b6c-0b6db9fdc4a6" />  
-
 
 Link-time discovery via a dedicated linker section, priority-ordered initialization, 
 failure-tolerant, removable from the image by name.  
@@ -80,6 +79,8 @@ Small stack-based arithmetic evaluator, usable interactively (`forth <expr>`),
 or as a boot-time script loaded by Limine as a module.  
 Used as an ALU, not as a system language: it takes numbers in, produces numbers out,  
 and knows nothing about strings, files, or the kernel outside of a small set of registered words.  
+
+<img width="546" height="263" alt="Extensions" src="https://github.com/user-attachments/assets/24c1b223-cb8a-4a3b-9b6c-0b6db9fdc4a6" />  
 
 **Diagnostics**  
 Panic handler with register dump, frame-pointer backtrace, exception vector decoding,  
