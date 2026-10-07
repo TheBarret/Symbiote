@@ -204,7 +204,12 @@ int64_t strtoll(const char *s, char **endp, int base) {
     char *inner_end = NULL;
     uint64_t mag = strtoull(s, &inner_end, base);
 
-    if (mag > (uint64_t)INT64_MAX + (uint64_t)neg) {
+    /* The magnitude limit differs by sign: INT64_MAX for positive,
+     * (uint64_t)INT64_MAX + 1 for negative (to allow INT64_MIN, whose
+     * magnitude is one more than INT64_MAX). Written as two branches
+     * so the boundary is visible. */
+    uint64_t limit = neg ? (uint64_t)INT64_MAX + 1 : (uint64_t)INT64_MAX;
+    if (mag > limit) {
         if (endp) *endp = (char *)start;
         return neg ? INT64_MIN : INT64_MAX;
     }
