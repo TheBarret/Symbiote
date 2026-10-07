@@ -8,6 +8,9 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
+<img width="1290" height="850" alt="greeter" src="https://github.com/user-attachments/assets/feada229-40fb-4ee4-8b1a-f7cc6de0c827" />
+
+
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader.  
@@ -50,6 +53,9 @@ and always know how to stop.
   Debug build (`-DSYM_MEMDEBUG`) adds header magic, poison on free and alloc, and owner tagging.  
 
 **Interrupts**  
+
+<img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />  
+
 GDT with a TSS and IST stacks for the double-fault vector.  
 IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
 NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
@@ -59,6 +65,10 @@ PIT at 1000 Hz driving a tick counter, `sleep_ms` and `uptime_ms`.
 Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
 
 **Extensions**  
+
+<img width="546" height="263" alt="Extensions" src="https://github.com/user-attachments/assets/24c1b223-cb8a-4a3b-9b6c-0b6db9fdc4a6" />  
+
+
 Link-time discovery via a dedicated linker section, priority-ordered initialization, 
 failure-tolerant, removable from the image by name.  
 A parallel command registry (`SYM_COMMAND`, section `.symbiote_cmd`) does the same for shell commands,  
