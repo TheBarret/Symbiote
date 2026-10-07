@@ -14,11 +14,11 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader.  
-ACPI RSDP and boot modules queried via the same request mechanism.  
+`ACPI, RSDP` and boot modules queried via the same request mechanism.  
 
 **Consoles**  
-Two independent output paths, serial (COM1, 115200 8N1) and framebuffer (via flanterm), fed by one formatter.  
-Every byte written anywhere is also kept in a 16 KiB ring buffer,  
+Two independent output paths, serial `(COM1, 115200 8N1)` and framebuffer (via `flanterm`), fed by one formatter.  
+Every byte written anywhere is also kept in a `16 KiB` ring buffer,  
 so a console that comes up late receives the entire boot log at registration.  
 `console_putc` provides a character-at-a-time path for interactive echo without going through the formatter.
 
@@ -27,9 +27,8 @@ so a console that comes up late receives the entire boot log at registration.
 width (literal or `*`), and `l`/`ll`/`z` length modifiers. Compiler format-string checking on every call.  
 
 **Keyboard**  
-Interrupt-driven PS/2 driver on IRQ1.  
-Controller self-test, scancode-set configuration via controller translation, extended-key handling, 
-modifier tracking, and device separation (keyboard vs mouse bytes via the AUXBUF status bit).  
+Interrupt-driven PS/2 driver on IRQ1, controller self-test, scancode-set configuration via controller translation,  
+extended-key handling, modifier tracking, and device separation (keyboard vs mouse bytes via the `AUXBUF` status bit).  
 Raw scancodes are pushed into a ring buffer by the IRQ handler;  
 decode runs in thread context, so the interrupt path never prints or allocates.  
 `kbd_getchar` blocks with `sti; hlt`, waking only when a key arrives.  
@@ -45,20 +44,22 @@ and always know how to stop.
 - **Physical**: bitmap page allocator initialized from the bootloader's memory map,  
   with a self-test that round-trips several thousand frames.  
   Hands out 4 KiB frames and contiguous runs. Bitmap placed in usable RAM via HHDM, not statically reserved.  
+
 - **Virtual**: 4-level page tables cloned from Limine, CR3 taken over, W^X applied to kernel sections,  
   and a small API for creating and modifying mappings in the current address space.  
-  `VMM_NOCACHE` supported for MMIO.  
+  `VMM_NOCACHE` supported for `MMIO`.  
+
 - **Heap**: chunked free list with block headers and immediate coalescing.  
   `kmalloc`, `kfree`, `kzalloc`, `krealloc`. Grows by 256 KiB chunks from the PMM.  
   Debug build (`-DSYM_MEMDEBUG`) adds header magic, poison on free and alloc, and owner tagging.  
 
 **Interrupts**  
 
-GDT with a TSS and IST stacks for the double-fault vector.  
-IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
-NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
-
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />  
+
+    GDT with a TSS and IST stacks for the double-fault vector.  
+    IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
+    NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
 
 PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
 LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
