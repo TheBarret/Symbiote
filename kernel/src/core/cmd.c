@@ -56,10 +56,11 @@ static const char *parse_spec(const char *s, struct param *out, int *count) {
     bool seen_optional = false;
 
     while (*s) {
-        if (*s == ' ') {
-            s++;
-            continue;
-        }
+        /* Skip one or more separating spaces. */
+        s += strspn(s, " ");
+
+        if (*s == '\0')
+            break;
         if (n == CMD_MAX_ARGS)
             return "too many parameters";
         if (n > 0 && out[n - 1].rest)
@@ -126,31 +127,14 @@ static const char *parse_spec(const char *s, struct param *out, int *count) {
 
 enum num_status { NUM_OK, NUM_BAD, NUM_OVERFLOW };
 
-/* Decimal or 0x-prefixed hex, unsigned 64-bit, with overflow detection. */
+/* Decimal or 0x-prefixed hex, unsigned 64-bit, whole string consumed.
+ * This is the command dispatcher's notion of a number argument.
+ * Distinct from strtoull() in /lib, which accepts a trailing suffix and
+ * reports where parsing stopped; command arguments must be exact. */
 static enum num_status parse_num(const char *s, uint64_t *out) {
-    unsigned base = 10;
-    if (s[0] == '0' && (s[1] == 'x' || s[1] == 'X')) {
-        base = 16;
-        s += 2;
-    }
-    if (*s == '\0')
+    uint64_t v;
+    if (!kstrtoull(s, &v))
         return NUM_BAD;
-
-    uint64_t v = 0;
-    for (; *s; s++) {
-        unsigned d;
-        if (*s >= '0' && *s <= '9')
-            d = (unsigned)(*s - '0');
-        else if (base == 16 && *s >= 'a' && *s <= 'f')
-            d = (unsigned)(*s - 'a') + 10;
-        else if (base == 16 && *s >= 'A' && *s <= 'F')
-            d = (unsigned)(*s - 'A') + 10;
-        else
-            return NUM_BAD;
-        if (v > (UINT64_MAX - d) / base)
-            return NUM_OVERFLOW;
-        v = v * base + d;
-    }
     *out = v;
     return NUM_OK;
 }
@@ -247,6 +231,13 @@ int cmd_selfcheck(void) {
             kprintf("Warning: entry %zu is incomplete (missing name, params, help or handler)\n", i);
             problems++;
             continue;
+        }
+
+        /* Command names must be non-empty and contain no spaces: the shell
+         * tokenizes on spaces, so a name with one could never be typed. */
+        if (strcspn(c->name, " \t") != strlen(c->name)) {
+            kprintf("Warning: '%s' has whitespace in its name\n", c->name);
+            problems++;
         }
 
         struct param p[CMD_MAX_ARGS];

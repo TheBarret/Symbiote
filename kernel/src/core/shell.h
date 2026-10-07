@@ -1,8 +1,6 @@
 #ifndef CORE_SHELL_H
 #define CORE_SHELL_H
 
-#define SHELL_VERSION "0.1.3"
-
 /* Interactive command loop.
  * Reads a line from the keyboard, splits it into words,
  * and hands the words to the command registry (core/cmd.h),
