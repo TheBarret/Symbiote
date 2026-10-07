@@ -6,7 +6,7 @@ IMAGE_NAME := symbiote-x86_64
 
 # Extensions to build into the image (see kernel/src/ext/). Override like:
 #   make EXTENSIONS="hello"       headless image, serial console only
-EXTENSIONS ?= fbcon system memory heap selftest
+EXTENSIONS ?= fbcon system memory selftest forth
 
 # Extra QEMU flags. -serial stdio sends the serial console to your terminal.
 QEMUFLAGS := -m 256M -serial stdio
@@ -65,6 +65,7 @@ $(IMAGE_NAME).iso: limine-binary/limine kernel limine.conf
 	rm -rf iso_root
 	mkdir -p iso_root/boot/limine iso_root/EFI/BOOT
 	cp kernel/bin-x86_64/symbiote iso_root/boot/
+	cp boot/locals.fs iso_root/boot/locals.fs
 	cp limine.conf iso_root/boot/limine/
 	cp limine-binary/limine-bios.sys limine-binary/limine-bios-cd.bin \
 	   limine-binary/limine-uefi-cd.bin iso_root/boot/limine/
