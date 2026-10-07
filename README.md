@@ -10,6 +10,22 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 <img width="1290" height="850" alt="greeter" src="https://github.com/user-attachments/assets/db988298-4826-4ba0-9833-684502993989" />  
 
+## Changelog
+
+- `lib/mem.h`, `lib/mem.c`: added `memchr`, `explicit_bzero`, and named align/bit helpers;  
+  (`is_power_of_two`, `align_up`, `align_down`, `ptr_align_up`, `ptr_align_down`, `bit_test`, `bit_set`, `bit_clear`).  
+- `lib/string.h`, `lib/string.c`: added `strrchr`, `strcat`, `strncat`, `strspn`,  
+  `strcspn`, `strpbrk`, `strstr`, `strtoull`, `strtoll`, and the strict wrapper `kstrtoull`.  
+- `lib/string.c`: rewrote `strtoll`'s overflow check as two explicit branches.  
+- `core/cmd.c`: `parse_num` now calls `kstrtoull`; `parse_spec` uses `strspn`; self-check now rejects whitespace in command names.
+- `core/kprintf.h`, `core/kprintf.c`: hardened rewrite: exposed `kemit_fn`/`kvformat`,  
+   added precision (`.N`/`.*`), added `%o` and `%b`, made `h` truncate to 16 bits, sized the digit buffer for base 2,  
+   replaced the long parameter list with `struct field`.  
+- `core/heap.c`: `struct chunk` records its own size; `heapcheck` uses it instead of assuming `HEAP_CHUNK_SIZE`.  
+- `core/heap.c`: `kmalloc` and `krealloc` now reject sizes that would overflow the alignment and header arithmetic.  
+- `core/pmm.c`: bitmap placement in Pass 2 now aligns the candidate base before checking size against the entry's end.  
+- `ext/selftest.c`: fixed the `pmm_contiguous: ok` label to `pmm_contig: ok`.  
+
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader.  
