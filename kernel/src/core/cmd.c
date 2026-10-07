@@ -244,7 +244,7 @@ int cmd_selfcheck(void) {
         const struct sym_cmd *c = cmd_at(i);
 
         if (!c->name || !c->name[0] || !c->params || !c->help || !c->fn) {
-            kprintf("cmd: entry %zu is incomplete (missing name, params, help or handler)\n", i);
+            kprintf("Warning: entry %zu is incomplete (missing name, params, help or handler)\n", i);
             problems++;
             continue;
         }
@@ -253,14 +253,14 @@ int cmd_selfcheck(void) {
         int np;
         const char *err = parse_spec(c->params, p, &np);
         if (err) {
-            kprintf("cmd: '%s' has a broken spec \"%s\": %s\n", c->name, c->params, err);
+            kprintf("Warning: '%s' has a broken spec \"%s\": %s\n", c->name, c->params, err);
             problems++;
         }
 
         for (size_t j = 0; j < i; j++) {
             const struct sym_cmd *d = cmd_at(j);
             if (d->name && strcmp(d->name, c->name) == 0) {
-                kprintf("cmd: duplicate command '%s'\n", c->name);
+                kprintf("Warning: duplicate command '%s'\n", c->name);
                 problems++;
                 break;
             }

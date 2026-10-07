@@ -29,8 +29,61 @@ static inline void outsw(uint16_t port, const void *addr, uint64_t count) {
     __asm__ volatile ("rep outsw" : "+S"(addr), "+c"(count) : "d"(port) : "memory");
 }
 
-static inline void cpu_cli(void) { __asm__ volatile ("cli"); }
-static inline void cpu_sti(void) { __asm__ volatile ("sti"); }
+/* cli/sti also act as compiler barriers ("memory"):
+ * code that checks a flag an interrupt handler sets must not be reordered across them. */
+static inline void cpu_cli(void) { __asm__ volatile ("cli" ::: "memory"); }
+static inline void cpu_sti(void) { __asm__ volatile ("sti" ::: "memory"); }
+
+static inline void cpu_hlt(void) { __asm__ volatile ("hlt"); }
+
+/* sti immediately followed by hlt, in ONE asm statement.
+ * The CPU delays interrupt delivery until after the instruction following sti,
+ * so a wakeup cannot slip in between the two and be lost.
+ * This is the only race-free way to sleep until an interrupt. Use it as:
+ *     cpu_cli(); while (!condition) { cpu_sti_hlt(); cpu_cli(); } ...
+ */
+static inline void cpu_sti_hlt(void) { __asm__ volatile ("sti; hlt" ::: "memory"); }
+
+#define CPU_RFLAGS_IF (1ull << 9)
+
+/* Disable interrupts and return the previous RFLAGS;
+ * give that value back to cpu_irq_restore() to re-enable ONLY if they were enabled before.
+ * This is what a function should use instead of a bare cpu_sti():
+ * it must not turn interrupts on behind a caller that had them off. */
+static inline uint64_t cpu_irq_save(void) {
+    uint64_t flags;
+    __asm__ volatile ("pushfq; pop %0; cli" : "=r"(flags) :: "memory");
+    return flags;
+}
+
+static inline void cpu_irq_restore(uint64_t flags) {
+    if (flags & CPU_RFLAGS_IF)
+        cpu_sti();
+}
+
+static inline uint64_t read_cr2(void) {
+    uint64_t v;
+    __asm__ volatile ("mov %%cr2, %0" : "=r"(v));
+    return v;
+}
+
+/* Descriptor-table register image used by lgdt / lidt. */
+struct dt_ptr {
+    uint16_t limit;
+    uint64_t base;
+} __attribute__((packed));
+
+static inline void cpu_lgdt(const struct dt_ptr *p) {
+    __asm__ volatile ("lgdt %0" :: "m"(*p) : "memory");
+}
+
+static inline void cpu_lidt(const struct dt_ptr *p) {
+    __asm__ volatile ("lidt %0" :: "m"(*p) : "memory");
+}
+
+static inline void cpu_ltr(uint16_t selector) {
+    __asm__ volatile ("ltr %0" :: "r"(selector) : "memory");
+}
 
 static inline uint64_t read_cr3(void) {
     uint64_t v;

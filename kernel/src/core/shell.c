@@ -118,7 +118,7 @@ static void run_line(char *line) {
     if (strcmp(argv[0], "help") == 0) {
         int rc = cmd_help_fn(argc, argv);
         if (rc == 2)
-            kprintf("Usage: help [command]\n");
+            kprintf("Usage: help <command>\n");
         return;
     }
 
@@ -134,13 +134,15 @@ void shell_run(void) {
         cpu_halt_forever();
     }
 
-    /* Catch duplicate names and broken parameter specs now, loudly, instead
-     * of when somebody happens to type the command. Silent when all is well. */
+    /* Catch duplicate names and broken parameter specs now, loudly,
+     * instead of when somebody happens to type the command. Silent when all is well. */
     int problems = cmd_selfcheck();
     if (problems)
         kprintf("Warning: %d issues detected in look-up table.\n", problems);
 
-    kprintf("\nType 'help' for a list of commands.\n");
+    // Todo: formal post-greet context
+
+    kprintf("\nType 'help' for a list of commands, ready when you are!\n");
 
     char line[SHELL_LINE_MAX];
     for (;;) {

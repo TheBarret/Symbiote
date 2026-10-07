@@ -37,6 +37,7 @@ extern char __kernel_end[];
 
 static uint64_t root_phys;   /* our PML4 physical address */
 static bool     nx_ok;       /* EFER.NXE is set */
+static bool     ready;       /* vmm_init() has completed */
 
 static inline uint64_t *table_virt(uint64_t phys) {
     return (uint64_t *)pmm_phys_to_virt(phys);
@@ -61,6 +62,8 @@ static uint64_t flags_to_pte(uint64_t flags) {
         pte |= PTE_GLOBAL;
     if ((flags & VMM_NX) && nx_ok)
         pte |= PTE_NX;
+    if (flags & VMM_NOCACHE)
+        pte |= PTE_PCD | PTE_PWT;
     return pte;
 }
 
@@ -95,9 +98,8 @@ static uint64_t clone_level(uint64_t old_phys, int level) {
     return new_phys;
 }
 
-/* Walk to the 4 KiB PTE for virt. Returns NULL if a huge page blocks the path
- * or (when create==false) a table is missing. When create==true, allocates
- * missing intermediate tables. */
+/* Walk to the 4 KiB PTE for virt. Returns NULL if a huge page blocks the path or (when create==false) a table is missing.
+ * When create==true, allocates missing intermediate tables. */
 static uint64_t *walk_pte(uint64_t virt, bool create) {
     uint64_t indices[4] = {
         (virt >> 39) & 0x1ff,
@@ -177,9 +179,11 @@ void vmm_init(void) {
 
     apply_kernel_wx();
 
-    kprintf("vmm_init() root=%p nx=%d kernel=%p..%p\n",
+    kprintf("→ vmm_init() root=%p nx=%d kernel=%p..%p\n",
             (void *)root_phys, nx_ok ? 1 : 0,
             (void *)__kernel_start, (void *)__kernel_end);
+
+    ready = true;
 }
 
 bool vmm_map(uint64_t virt, uint64_t phys, uint64_t flags) {
@@ -254,4 +258,8 @@ uint64_t vmm_translate(uint64_t virt) {
 
 uint64_t vmm_root_phys(void) {
     return root_phys;
+}
+
+bool vmm_ready(void) {
+    return ready;
 }

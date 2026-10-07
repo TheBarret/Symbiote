@@ -36,9 +36,9 @@ void ext_init_all(void) {
             int rc = e->init();
             current = NULL;
             if (rc == 0)
-                kprintf("ext_init_all() %-8s enabled\n", e->name);
+                kprintf("→ ext_init_all() %-8s enabled\n", e->name);
             else
-                kprintf("ext_init_all() %-8s failed, %d\n", e->name, rc);
+                kprintf("→ ext_init_all() %-8s failed, %d\n", e->name, rc);
         }
         last = next;
     }

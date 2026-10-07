@@ -6,13 +6,10 @@
 
 /* Virtual memory manager.
  *
- * Takes ownership of the address space by cloning Limine's page tables into
- * PMM-backed frames, then switching CR3. After init, bootloader page tables
- * are unused and may be reclaimed with the rest of BOOTLOADER_RECLAIMABLE.
- *
- * Map/unmap operate on 4 KiB pages. Huge pages inherited from Limine (HHDM)
- * are left intact; do not try to map/unmap inside those ranges.
- *
+ * Takes ownership of the address space by cloning Limine's page tables into PMM-backed frames,
+ * then switching CR3. After init, bootloader page tables are unused and may be reclaimed with the rest of BOOTLOADER_RECLAIMABLE.
+ * Map/unmap operate on 4 KiB pages.
+ * Huge pages inherited from Limine (HHDM) are left intact; do not try to map/unmap inside those ranges.
  * No locking, same single-threaded boot assumption as the PMM. */
 
 #define VMM_PAGE_SIZE 4096
@@ -26,6 +23,9 @@
 /* Higher-half window reserved for kernel dynamic mappings (heap, etc.).
  * Kept clear of HHDM and the kernel image at 0xffffffff80000000. */
 #define VMM_DYNAMIC_BASE 0xfffffe0000000000ull
+
+// device memory must not be cached
+#define VMM_NOCACHE (1ull << 4)
 
 /* Clone Limine's tables, switch CR3, apply W^X on kernel sections.
  * Requires pmm_init() first. Panics on failure. */
@@ -48,5 +48,9 @@ uint64_t vmm_translate(uint64_t virt);
 
 /* Physical address of the active PML4 (CR3 without PCID/flags). */
 uint64_t vmm_root_phys(void);
+
+/* True once vmm_init() has finished. The fault reporter asks this before it calls vmm_translate(),
+ * which is only meaningful on our own tables. */
+bool vmm_ready(void);
 
 #endif

@@ -3,10 +3,12 @@
 
 #include <stdbool.h>
 
-/* Polled PS/2 keyboard driver.
+/* Interrupt-driven PS/2 keyboard driver.
  *
- * Interrupts are not installed yet (M3), so this reads the controller directly.
- * Nothing here blocks except kbd_getchar, which spins until a character is available.
+ * The IRQ1 handler only reads the controller and pushes raw scancode bytes into a small ring buffer (it must not print or allocate).
+ * kbd_poll() pops bytes from that ring and decodes them (shift, caps lock, 0xE0 prefix) in normal context,
+ * so the decoder never runs inside an interrupt.
+ * kbd_getchar() sleeps with hlt until a key arrives; it no longer spins.
  * The driver makes no assumption that a controller is present.
  * Call kbd_init() first and check its return value before using the rest. */
 
