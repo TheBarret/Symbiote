@@ -85,7 +85,7 @@ static int cmd_memmap_fn(const struct cmd_args *a) {
     return CMD_OK;
 }
 
-SYM_COMMAND(memmap, "", "Dump memory map", cmd_memmap_fn);
+SYM_COMMAND(dump, "", "Dump memory map", cmd_memmap_fn);
 
 /*  pages  */
 
