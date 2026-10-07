@@ -72,9 +72,9 @@ and always know how to stop.
 
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />  
 
-    GDT with a TSS and IST stacks for the double-fault vector.  
-    IDT with all 256 gates filled: exceptions 0–31, IRQs 32–47, default handler beyond that.  
-    NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
+GDT with a TSS and IST stacks for the double-fault vector.  
+IDT with all `256` gates filled: exceptions `0–31`, IRQs `32–47`, default handler beyond that.  
+NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
 
 PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
 LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
@@ -90,13 +90,9 @@ A parallel command registry (`SYM_COMMAND`, section `.symbiote_cmd`) does the sa
 with declarative parameter specs, centralized argument validation, and a boot-time self-check  
 that catches duplicate names and malformed specs.  
 
-**Forth**  
-Small stack-based arithmetic evaluator, usable interactively (`forth <expr>`), 
+**Forth/Brainfuck**  
+Small stack or tape-based (arithmetic) evaluators, usable interactively (`forth <expr>`, `bf <source>`), 
 or as a boot-time script loaded by Limine as a module.  
-Used as an ALU, not as a system language: it takes numbers in, produces numbers out,  
-and knows nothing about strings, files, or the kernel outside of a small set of registered words.  
-
-<img width="546" height="263" alt="Extensions" src="https://github.com/user-attachments/assets/24c1b223-cb8a-4a3b-9b6c-0b6db9fdc4a6" />  
 
 **Diagnostics**  
 Panic handler with register dump, frame-pointer backtrace, exception vector decoding,  
