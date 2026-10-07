@@ -1,4 +1,4 @@
-# Project Symbiote (Hobby Project)
+# Project Symbiote (Hobby, Active development)
 Symbiote is a bootloader-agnostic x86_64 kernel that boots via Limine,  
 developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](https://github.com/TheBarret/Kernel)
 
@@ -8,8 +8,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
-<img width="1290" height="850" alt="greeter" src="https://github.com/user-attachments/assets/feada229-40fb-4ee4-8b1a-f7cc6de0c827" />
-
+<img width="1290" height="850" alt="greeter" src="https://github.com/user-attachments/assets/db988298-4826-4ba0-9833-684502993989" />  
 
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
