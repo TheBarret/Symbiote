@@ -17,6 +17,7 @@
 #include <core/timer.h>
 #include <core/version.h>
 #include <core/vmm.h>
+#include <core/vfs.h>
 
 void kmain(void) {
     // check
@@ -27,37 +28,32 @@ void kmain(void) {
     // bring up essentials
     serial_init();
 
-    // present greeters and stages
-    klog("Loading kernel: Symbiote %s...\n", SYM_VERSION);
+    // init logger, present greeters and stages
+    klog_init();
+    klog_info("Loading kernel: Symbiote %s...\n", SYM_VERSION);
 
     // CPU tables (no heap required)
     gdt_init();
     idt_init();
-    klog("GDT + TSS / IDT (vectors=256)...OK\n");
 
     pmm_init();
     struct pmm_stats pm = pmm_get_stats();
-    klog("PMM (%zu MiB usable)...OK\n",
-         (pm.free_frames * PMM_PAGE_SIZE) / (1024 * 1024));
+    klog_info("PMM: (%zu MiB usable)\n", (pm.free_frames * PMM_PAGE_SIZE) / (1024 * 1024));
 
     heap_init();
     struct heap_stats hs = heap_get_stats();
-    klog("HEAP (%zu KiB free)...OK\n", hs.bytes_free / 1024);
+    klog_info("HEAP: (%zu KiB free)...OK\n", hs.bytes_free / 1024);
 
     vmm_init();
-    klog("VMM...OK\n");
-
-    pic_init();
-    klog("8259 PIC (legacy) → LAPIC...OK\n");
-
+    pic_init();                 // interrupt stage
     timer_init(TIMER_HZ);
-    klog("Timer (%u Hz)...OK\n", timer_hz());
-
     cpu_sti();
-    klog("Interrupts enabled\n");
+    vfs_init();
+
+    klog_info("Stage 1 → Stage 2\n");
 
     ext_init_all();
-    klog("extensions (shared: %zu, system: %zu)...ok\n", ext_count(), cmd_count());
+    klog_info("Stage 2 complete (ext: %zu, sys: %zu)\n", ext_count(), cmd_count());
 
     shell_run();
 }
