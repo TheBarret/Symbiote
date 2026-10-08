@@ -76,10 +76,7 @@ static void cpu_scan(void) {
 static int cmd_cpu_fn(const struct cmd_args *a) {
     (void)a;
 
-    kprintf("CPU: %s family %u model %u stepping %u\n",
-            cpu.vendor, cpu.family, cpu.model, cpu.stepping);
-
-    kprintf("features:");
+    kprintf("CPU: %s family %u model %u stepping %u (", cpu.vendor, cpu.family, cpu.model, cpu.stepping);
     if (cpu.sse)   kprintf(" SSE");
     if (cpu.sse2)  kprintf(" SSE2");
     if (cpu.sse3)  kprintf(" SSE3");
@@ -90,7 +87,7 @@ static int cmd_cpu_fn(const struct cmd_args *a) {
     if (cpu.avx2)  kprintf(" AVX2");
     if (cpu.rdrand) kprintf(" RDRAND");
     if (cpu.rdseed) kprintf(" RDSEED");
-    kprintf("\n");
+    kprintf(" )\n");
     return CMD_OK;
 }
 
@@ -101,4 +98,4 @@ static int cpu_ext_init(void) {
     return 0;
 }
 
-SYM_EXTENSION(cpu, cpu_ext_init, EXT_PRIO_APPLET);
+SYM_EXTENSION(cpu_toolkit, cpu_ext_init, EXT_PRIO_APPLET);
