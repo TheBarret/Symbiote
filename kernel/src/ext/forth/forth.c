@@ -152,10 +152,10 @@ static void forth_eval(const char *source, size_t len) {
 }
 
 /*  shell command  */
+/* The spec is <code:str...>, so the dispatcher guarantees argc >= 1.
+    * Join the arguments back into one line so Forth sees the spaces. */
 
 static int cmd_forth_fn(const struct cmd_args *a) {
-    /* The spec is <code:str...>, so the dispatcher guarantees argc >= 1.
-     * Join the arguments back into one line so Forth sees the spaces. */
     char line[256];
     size_t n = 0;
     for (int i = 0; i < a->argc && n + 1 < sizeof line; i++) {
@@ -174,21 +174,6 @@ static int cmd_forth_fn(const struct cmd_args *a) {
 
 SYM_COMMAND(forth, "<code:str...>", "Micro-Forth calculator (forth <expr>)", cmd_forth_fn);
 
-/*  boot-time module loading  */
-
-static int forth_ext_init(void) {
-    uint64_t mod_count = 0;
-    struct limine_file **mods = boot_modules(&mod_count);
-    if (mod_count == 0 || mods == NULL)
-        return 0;
-
-    struct limine_file *mod = mods[0];
-
-    kprintf("→ running startup script: %s, %zu bytes\n",
-            mod->path ? mod->path : "unnamed", (size_t)mod->size);
-
-    forth_eval((const char *)mod->address, (size_t)mod->size);
-    return 0;
-}
-
-SYM_EXTENSION(forth, forth_ext_init, EXT_PRIO_APPLET);
+/* Forth extension greeter */
+static int forth_ext_init(void) { return 0; }
+SYM_EXTENSION(mforth_calc, forth_ext_init, EXT_PRIO_APPLET);
