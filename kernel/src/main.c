@@ -42,7 +42,7 @@ void kmain(void) {
 
     heap_init();
     struct heap_stats hs = heap_get_stats();
-    klog_info("HEAP: (%zu KiB free)...OK\n", hs.bytes_free / 1024);
+    klog_info("HEAP: (%zu KiB free)\n", hs.bytes_free / 1024);
 
     vmm_init();
     pic_init();                 // interrupt stage
