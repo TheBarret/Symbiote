@@ -20,7 +20,7 @@ Booting from an ISO under BIOS and UEFI, verified against the Limine protocol re
 Memory map and HHDM offset queried from the bootloader. ACPI, RSDP, and boot modules queried via the same request mechanism.  
 
 **Consoles**  
-Two independent output paths, serial (COM1, 115200 8N1) and framebuffer (via `flanterm`), fed by one formatter.  
+Two independent output paths, serial (`COM1, 115200 8N1`) and framebuffer (via `flanterm`), fed by one formatter.  
 Every byte written anywhere is also kept in a 16 KiB ring buffer, so a console that comes up late receives the entire boot log at registration.   
 `console_putc` provides a character-at-a-time path for interactive echo without going through the formatter.  
 
@@ -56,27 +56,34 @@ The shell itself is a dumb parser; every command is an extension. Only `help` an
 
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
 
-GDT with a TSS and IST stacks for the double-fault vector. IDT with all `256` gates filled: exceptions `0–31`, IRQs `32–47`,  
-default handler beyond that. NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
-
-PIC remap to vectors `0x20`–`0x2F`, mask-on-register, per-line spurious handling. LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
-PIT at `1000 Hz` driving a tick counter, `timer_sleep_ms` and `uptime_ms`. Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
+    GDT with a TSS and IST stacks for the double-fault vector. IDT with all 256 gates filled:  
+    exceptions 0–31, IRQs 32–47, default handler beyond that.  
+    NASM-free stubs in isr_stubs.S, compiled by the same GCC invocation as the rest of the kernel.  
+    
+    PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
+    LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
+    PIT at 1000 Hz driving a tick counter, timer_sleep_ms and uptime_ms.  
+    Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
 
 **Extensions**  
 
-Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant, removable from the image by name.  
+Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant removable by name.  
 A parallel command registry (`SYM_COMMAND`, section `.symbiote_cmd`) does the same for shell commands,  
 with declarative parameter specs, centralized argument validation, and a boot-time self-check that catches duplicate names and malformed specs.  
 
 **Diagnostics**  
 
-Panic handler with register dump, frame-pointer backtrace, exception vector decoding, and active-extension / active-command reporting.  
-`klog` boot log with a fixed-width tag column, per-subsystem coloring, and an `rdtsc`-based timestamp prefix (microsecond deltas after CPUID calibration, 1 GHz fallback otherwise).  
+Supports a panic handler with register dump, frame-pointer backtrace, exception vector decoding, and basic reporting.  
+The `klog` is primitive log organizer with a fixed-width tag column, per-subsystem coloring, and an `rdtsc`-based timestamp prefix.  
+*(microsecond deltas after CPUID calibration, 1 GHz fallback otherwise)*    
 
-**TUI**  
+**Text-based User Interface - TUI Engine**  
 
-`core/tui` is a small terminal UI core: two cell grids, rect-based drawing, differential flush. A view is a draw callback and a key callback.  
-Used by the `explorer` extension, a single-panel VFS browser.  
+<img width="1290" height="850" alt="TUI" src="https://github.com/user-attachments/assets/74931765-08a2-4b49-aa24-5a7fe35ec625" />
+
+
+`core/tui` is a small terminal UI core: two cell grids, rect-based drawing, differential flush.  
+A view is a draw callback and a key callback, example app is the `explorer` extension, a single-panel VFS browser.  
 
 ---
 
