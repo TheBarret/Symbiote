@@ -23,62 +23,9 @@
 
 /* System-level commands & utilities */
 
+/*  irqs  */
 #define U(x) ((unsigned long long)(x))
 
-/*  fault  */
-
-static void __attribute__((noinline)) fault_divide(void) {
-    __asm__ volatile ("xorl %%edx, %%edx\n\t"
-                      "movl $1, %%eax\n\t"
-                      "xorl %%ecx, %%ecx\n\t"
-                      "divl %%ecx" ::: "rax", "rcx", "rdx");
-}
-
-static void __attribute__((noinline)) fault_ud(void) {
-    __asm__ volatile ("ud2");
-}
-
-/* Load a selector past the end of the GDT: #GP with a decodable error code. */
-static void __attribute__((noinline)) fault_gp(void) {
-    __asm__ volatile ("movw $0x30, %%ax\n\t"
-                      "movw %%ax, %%ds" ::: "rax");
-}
-
-static void __attribute__((noinline)) fault_pf(void) {
-    /* The empty asm hides the constant from the optimiser, which would
-     * otherwise warn about (and might delete) a write to a fixed address. */
-    uint64_t addr = 0x10;
-    __asm__ volatile ("" : "+r"(addr));
-    *(volatile uint64_t *)addr = 0xDEAD;
-}
-
-/* Point rsp at unmapped memory and push: the #PF cannot be delivered on that
- * stack, which escalates to a double fault. It only gets reported because
- * vector 8 runs on its own IST stack. */
-static void __attribute__((noinline)) fault_df(void) {
-    __asm__ volatile ("movq $0, %%rsp\n\t"
-                      "pushq %%rax" ::: "memory");
-}
-
-static void __attribute__((noinline)) fault_int3(void) {
-    __asm__ volatile ("int3");
-}
-
-static const struct {
-    const char *name;
-    void (*fn)(void);
-    const char *what;
-} faults[] = {
-    { "divide", fault_divide, "#DE  divide by zero" },
-    { "ud",     fault_ud,     "#UD  invalid opcode" },
-    { "gp",     fault_gp,     "#GP  bad segment selector" },
-    { "pf",     fault_pf,     "#PF  write to an unmapped address" },
-    { "df",     fault_df,     "#DF  double fault (bad stack, needs the IST)" },
-    { "int3",   fault_int3,   "#BP  breakpoint" },
-};
-
-// /////////////////////////
-// first stage commands
 
 /*  version  */
 
@@ -88,17 +35,7 @@ static int cmd_version_fn(const struct cmd_args *a) {
     return CMD_OK;
 }
 
-SYM_COMMAND(version, "", "Print kernel version", cmd_version_fn);
-
-/*  exts  */
-
-static int cmd_exts_fn(const struct cmd_args *a) {
-    (void)a;
-    kprintf("extensions (shared: %zu, system: %zu)...ok\n", ext_count(), cmd_count());
-    return CMD_OK;
-}
-
-SYM_COMMAND(exts, "", "Display extension counts", cmd_exts_fn);
+SYM_COMMAND(version, "", "Display kernel version", cmd_version_fn);
 
 /*  clear  */
 
@@ -111,30 +48,6 @@ static int cmd_clear_fn(const struct cmd_args *a) {
 
 SYM_COMMAND(clear, "", "Clear screen (ANSI)", cmd_clear_fn);
 
-/*  panic  */
-
-static int cmd_panic_fn(const struct cmd_args *a) {
-    /* Optional message. The spec is [message:str...], so the words are
-     * joined back into a single line before printing. */
-    char buf[128];
-    size_t n = 0;
-    for (int i = 0; i < a->argc && n + 1 < sizeof buf; i++) {
-        if (i > 0 && n + 1 < sizeof buf)
-            buf[n++] = ' ';
-        const char *p = a->argv[i];
-        while (*p && n + 1 < sizeof buf)
-            buf[n++] = *p++;
-    }
-    buf[n] = '\0';
-
-    if (n == 0)
-        PANIC("Test Panic!");
-    PANIC("%s", buf);
-    return CMD_OK;      /* not reached; PANIC is noreturn */
-}
-
-SYM_COMMAND(panic, "[message:str...]", "Test panic", cmd_panic_fn);
-
 /*  halt  */
 static int cmd_halt_fn(const struct cmd_args *a) {
     (void)a;
@@ -144,23 +57,6 @@ static int cmd_halt_fn(const struct cmd_args *a) {
 }
 SYM_COMMAND(halt, "", "Stop Machine", cmd_halt_fn);
 
-
-/* fault tester  */
-static int cmd_fault(const struct cmd_args *a) {
-    for (size_t i = 0; i < sizeof faults / sizeof faults[0]; i++) {
-        if (strcmp(a->argv[0], faults[i].name) == 0) {
-            kprintf("triggering %s ...\n", faults[i].what);
-            faults[i].fn();
-            kprintf("fault: it came back, which should not happen\n");
-            return 1;
-        }
-    }
-    kprintf("fault: unknown kind '%s'. kinds:\n", a->argv[0]);
-    for (size_t i = 0; i < sizeof faults / sizeof faults[0]; i++)
-        kprintf("  %-7s %s\n", faults[i].name, faults[i].what);
-    return CMD_USAGE;
-}
-SYM_COMMAND(fault, "<kind:str>", "Test faulting", cmd_fault);
 
 /*  irqs  */
 
@@ -176,7 +72,7 @@ static int cmd_irqs(const struct cmd_args *a) {
     }
     return 0;
 }
-SYM_COMMAND(irqs, "", "Per-IRQ interrupt counters", cmd_irqs);
+SYM_COMMAND(irqs, "", "IRQ interrupt status", cmd_irqs);
 
 /*  uptime */
 
@@ -211,3 +107,118 @@ static int cmd_sleep(const struct cmd_args *a) {
     return 0;
 }
 SYM_COMMAND(sleep, "<ms:num>", "Sleep N milliseconds (Esc=interrupt)", cmd_sleep);
+
+/* extension greeter */
+static int system_ext_init(void) { return 0; }
+SYM_EXTENSION(system_toolkit, system_ext_init, EXT_PRIO_APPLET);
+
+/*  exts
+
+static int cmd_exts_fn(const struct cmd_args *a) {
+    (void)a;
+    kprintf("extensions (shared: %zu, system: %zu)...ok\n", ext_count(), cmd_count());
+    return CMD_OK;
+}
+SYM_COMMAND(exts, "", "Display extension counts", cmd_exts_fn);
+*/
+
+/*  panic
+
+static int cmd_panic_fn(const struct cmd_args *a) {
+    // Optional message. The spec is [message:str...], so the words are
+    // joined back into a single line before printing.
+    char buf[128];
+    size_t n = 0;
+    for (int i = 0; i < a->argc && n + 1 < sizeof buf; i++) {
+        if (i > 0 && n + 1 < sizeof buf)
+            buf[n++] = ' ';
+        const char *p = a->argv[i];
+        while (*p && n + 1 < sizeof buf)
+            buf[n++] = *p++;
+    }
+    buf[n] = '\0';
+
+    if (n == 0)
+        PANIC("Test Panic!");
+    PANIC("%s", buf);
+    return CMD_OK;      // not reached; PANIC is noreturn
+}
+
+SYM_COMMAND(panic, "[message:str...]", "Test panic", cmd_panic_fn);
+*/
+
+
+/*  fault
+
+static void __attribute__((noinline)) fault_divide(void) {
+    __asm__ volatile ("xorl %%edx, %%edx\n\t"
+                      "movl $1, %%eax\n\t"
+                      "xorl %%ecx, %%ecx\n\t"
+                      "divl %%ecx" ::: "rax", "rcx", "rdx");
+}
+
+static void __attribute__((noinline)) fault_ud(void) {
+    __asm__ volatile ("ud2");
+}
+*/
+
+/* Load a selector past the end of the GDT: #GP with a decodable error code.
+static void __attribute__((noinline)) fault_gp(void) {
+    __asm__ volatile ("movw $0x30, %%ax\n\t"
+                      "movw %%ax, %%ds" ::: "rax");
+}
+
+static void __attribute__((noinline)) fault_pf(void) {
+    // The empty asm hides the constant from the optimiser, which would
+    // otherwise warn about (and might delete) a write to a fixed address.
+    uint64_t addr = 0x10;
+    __asm__ volatile ("" : "+r"(addr));
+    *(volatile uint64_t *)addr = 0xDEAD;
+}
+*/
+
+
+/* Point rsp at unmapped memory and push: the #PF cannot be delivered on that
+ * stack, which escalates to a double fault. It only gets reported because
+ * vector 8 runs on its own IST stack.
+static void __attribute__((noinline)) fault_df(void) {
+    __asm__ volatile ("movq $0, %%rsp\n\t"
+                      "pushq %%rax" ::: "memory");
+}
+
+static void __attribute__((noinline)) fault_int3(void) {
+    __asm__ volatile ("int3");
+}
+
+static const struct {
+    const char *name;
+    void (*fn)(void);
+    const char *what;
+} faults[] = {
+    { "divide", fault_divide, "#DE  divide by zero" },
+    { "ud",     fault_ud,     "#UD  invalid opcode" },
+    { "gp",     fault_gp,     "#GP  bad segment selector" },
+    { "pf",     fault_pf,     "#PF  write to an unmapped address" },
+    { "df",     fault_df,     "#DF  double fault (bad stack, needs the IST)" },
+    { "int3",   fault_int3,   "#BP  breakpoint" },
+};
+*/
+
+
+/* fault tester
+static int cmd_fault(const struct cmd_args *a) {
+    for (size_t i = 0; i < sizeof faults / sizeof faults[0]; i++) {
+        if (strcmp(a->argv[0], faults[i].name) == 0) {
+            kprintf("triggering %s ...\n", faults[i].what);
+            faults[i].fn();
+            kprintf("fault: it came back, which should not happen\n");
+            return 1;
+        }
+    }
+    kprintf("fault: unknown kind '%s'. kinds:\n", a->argv[0]);
+    for (size_t i = 0; i < sizeof faults / sizeof faults[0]; i++)
+        kprintf("  %-7s %s\n", faults[i].name, faults[i].what);
+    return CMD_USAGE;
+}
+SYM_COMMAND(fault, "<kind:str>", "Test faulting", cmd_fault);
+*/
