@@ -103,9 +103,17 @@ and active-extension / active-command reporting.
 
 ## Virtual Filesystem
 
-**Currently developing a `ramfs` that is flat and has the basic toolchain (create, read, write, and delete for files and folders).**  
+Currently developing a `ramfs` that is flat and has the basic toolchain (create, read, write, and delete for files and folders).  
 
 <img width="1290" height="850" alt="vfs" src="https://github.com/user-attachments/assets/029a2e37-4383-41cc-bc55-0e6bfdb9114a" />  
+
+*early filesystem testing*  
+
+## klog + TSC Counter
+
+<img width="1290" height="850" alt="tsc" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
+
+*early tsc logging*  
 
 
 ---
@@ -128,7 +136,7 @@ and active-extension / active-command reporting.
 kernel/
   src/
     main.c            boot sequence
-    core/             boot, cmd, console, cpu, ext, gdt, heap, idt, isr, keyboard, klog,
+    core/             boot, cmd, console, cpu, ext, gdt, heap, idt, isr, keyboard, tui, klog,
                       kprintf, panic, pic, pmm, serial, shell, timer, version, vmm
     lib/              mem, string
     ext/              fbcon, hello, cmd_heap, cmd_mem, cmd_sys, forth, selftest
