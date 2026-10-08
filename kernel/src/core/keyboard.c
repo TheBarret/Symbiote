@@ -387,18 +387,32 @@ enum kbd_event kbd_poll(char *out) {
     return KBD_CHAR;
 }
 
-/*  blocking reader  */
+/*  Blocking reader  */
 
 char kbd_getchar(void) {
     for (;;) {
         char c = 0;
         if (kbd_poll(&c) == KBD_CHAR)
             return c;
-
         /* Nothing usable yet: halt until an interrupt instead of spinning.
          * Interrupts stay off while the ring is checked,
          * and are enabled only for the hlt itself,
          * so a keystroke cannot arrive between "ring is empty" and "go to sleep" and be missed. */
+        uint64_t flags = cpu_irq_save();
+        while (ring_empty()) {
+            cpu_sti_hlt();
+            cpu_cli();
+        }
+        cpu_irq_restore(flags);
+    }
+}
+/* Blocking until...  */
+enum kbd_event kbd_wait(char *out) {
+    for (;;) {
+        enum kbd_event ev = kbd_poll(out);
+        if (ev != KBD_NONE)
+            return ev;
+
         uint64_t flags = cpu_irq_save();
         while (ring_empty()) {
             cpu_sti_hlt();

@@ -1,8 +1,9 @@
+#include "klog.h"
 #include <limits.h>
 #include <stddef.h>
 #include <core/version.h>
 #include <core/ext.h>
-#include <core/kprintf.h>
+#include <core/klog.h>
 
 /* Provided by the linker script (linker-scripts/x86_64.lds). */
 extern const struct sym_ext __symbiote_ext_start[];
@@ -17,9 +18,9 @@ size_t ext_count(void) {
 }
 
 void ext_init_all(void) {
-    /* Walk priority levels in ascending order: each pass finds the next
-     * level above `last`, then runs everything at that level. The table is
-     * read-only, so we do it with repeated scans instead of sorting. */
+    /* Walk priority levels in ascending order:
+     * each pass finds the next level above `last`, then runs everything at that level.
+     * The table is read-only, so we do it with repeated scans instead of sorting. */
     int last = -1;
     for (;;) {
         int next = INT_MAX;
@@ -36,9 +37,9 @@ void ext_init_all(void) {
             int rc = e->init();
             current = NULL;
             if (rc == 0)
-                kprintf("→ ext_init_all() %-8s enabled\n", e->name);
+                klog_ext("→ %-40s enabled\n", e->name);
             else
-                kprintf("→ ext_init_all() %-8s failed, %d\n", e->name, rc);
+                klog_error("→ %-40s failed, %d\n", e->name, rc);
         }
         last = next;
     }

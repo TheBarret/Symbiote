@@ -3,6 +3,26 @@
 
 #include <stdint.h>
 
+/* rdtsc field */
+
+//static inline uint64_t rdtsc(void) {
+//    uint32_t low, high;
+//    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+//    return ((uint64_t)high << 32) | low;
+//}
+
+/* TSC field, Non-serializing; sufficient for an estimated timestamp. */
+static inline uint64_t rdtsc(void) {
+    uint32_t low, high;
+    __asm__ volatile("rdtsc" : "=a"(low), "=d"(high));
+    return ((uint64_t)high << 32) | low;
+}
+
+/* Discover TSC frequency in Hz.
+ * Should be at CPUID 0x15, a family/model table for the ECX==0 case,
+ * Returns 0 if no estimate is available. no panics, no blocks. */
+uint64_t cpu_tsc_hz(void);
+
 /* Port I/O */
 static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile ("outb %0, %1" : : "a"(val), "Nd"(port));

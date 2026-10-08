@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <core/ext.h>
 #include <core/heap.h>
-#include <core/kprintf.h>
+#include <core/klog.h>
 #include <core/panic.h>
 #include <core/pmm.h>
 #include <lib/mem.h>
@@ -65,7 +65,7 @@ static struct chunk *chunks_head;
 static void header_check(struct block_header *b, const char *where) {
 #ifdef SYM_MEMDEBUG
     if (b->magic != (uint32_t)BLOCK_MAGIC) {
-        kprintf("→ SYM_MEMDEBUG: bad magic 0x%x (expected 0x%x) at %p (%s)\n",
+        klog_warning("→ SYM_MEMDEBUG: bad magic 0x%x (expected 0x%x) at %p (%s)\n",
                 b->magic, (unsigned)BLOCK_MAGIC, (void *)b, where);
         PANIC("heap: block header corruption");
     }
@@ -130,7 +130,7 @@ void heap_init(void) {
         PANIC("heap: cannot allocate initial chunk (pmm has no frames)");
 
     struct heap_stats s = heap_get_stats();
-    kprintf("→ heap_init() chunk=%u KiB, chunks=%zu, free=%u KiB\n",
+    klog("→ heap_init() chunk=%u KiB, chunks=%zu, free=%u KiB\n",
             (unsigned)(HEAP_CHUNK_SIZE / 1024),
             s.chunks, (unsigned)(s.bytes_free / 1024));
 }
@@ -233,7 +233,7 @@ void kfree(void *ptr) {
 
     header_check(b, "kfree");
     if (b->free) {
-        kprintf("heap: double free of %p (owner at free time: %s)\n",
+        klog_error("HEAP: double free of %p (owner at free time: %s)\n",
                 ptr,
 #ifdef SYM_MEMDEBUG
                 b->owner ? b->owner : "(none)"

@@ -4,7 +4,7 @@
 #include <core/pic.h>
 
 #include <core/vmm.h>
-#include <core/kprintf.h>
+#include <core/klog.h>
 
 #define PIC1_CMD  0x20
 #define PIC1_DATA 0x21
@@ -42,14 +42,14 @@ static void lapic_virtual_wire(void) {
     if (!vmm_map(LAPIC_VA, phys, VMM_WRITE | VMM_NX | VMM_NOCACHE))
         return;
     volatile uint32_t *r = (volatile uint32_t *)LAPIC_VA;
-    kprintf("→ lapic_virtual_wire(): lint0=%08x svr=%08x\n", r[LAPIC_LINT0], r[LAPIC_SVR]);
+    klog("→ lapic_virtual_wire(): lint0=%08x svr=%08x\n", r[LAPIC_LINT0], r[LAPIC_SVR]);
     r[LAPIC_SVR]   = (r[LAPIC_SVR] & ~0xFFu) | 0x100 | 0xFF;   /* software-enable, spurious vector 0xFF */
     r[LAPIC_LINT0] = 0x700;                                    /* ExtINT, unmasked */
 }
 
 void pic_init(void) {
     /* ICW1: start initialisation, expect ICW4. */
-    kprintf("→ pic_init() initializing...\n");
+    klog("→ pic_init() initializing...\n");
     outb(PIC1_CMD, ICW1_INIT | ICW1_ICW4); io_wait();
     outb(PIC2_CMD, ICW1_INIT | ICW1_ICW4); io_wait();
     /* ICW2: vector offsets. Without this IRQ0-7 land on vectors 8-15,

@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <core/boot.h>
 #include <core/cpu.h>
+#include <core/klog.h>
 #include <core/kprintf.h>
 #include <core/panic.h>
 #include <core/pmm.h>
@@ -182,7 +183,7 @@ void pmm_init(void) {
         free_frames--;
     }
 
-    kprintf("→ pmm_init() allocated %zu frames total, of which %zu are free (%zu MiB)\n",
+    klog("→ pmm_init() allocated %zu frames total, of which %zu are free (%zu MiB)\n",
             total_frames, free_frames,
             (free_frames * PMM_PAGE_SIZE) / (1024 * 1024));
 }

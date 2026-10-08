@@ -6,6 +6,7 @@
 #include <core/panic.h>
 #include <core/timer.h>
 #include <core/kprintf.h>
+#include <core/klog.h>
 
 #define PIT_FREQ  1193182ull        /* Hz, the PIT's input clock */
 #define PIT_CH0   0x40
@@ -36,7 +37,7 @@ void timer_init(uint32_t hz) {
     if (irq_register(0, timer_irq, NULL) != 0)
         PANIC("timer: IRQ0 already taken");
     inited = true;
-    kprintf("→ timer_init() 16-bit counter, channel 0, lobyte/hibyte, mode 2 (rate generator)\n");
+    klog("→ timer_init() 16-bit counter, channel 0, lobyte/hibyte, mode 2 (rate generator)\n");
 }
 
 uint32_t timer_hz(void) {

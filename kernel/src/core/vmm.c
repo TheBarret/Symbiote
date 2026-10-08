@@ -3,6 +3,7 @@
 #include <core/boot.h>
 #include <core/cpu.h>
 #include <core/kprintf.h>
+#include <core/klog.h>
 #include <core/panic.h>
 #include <core/pmm.h>
 #include <core/vmm.h>
@@ -169,7 +170,7 @@ void vmm_init(void) {
 
     nx_ok = efer_nxe_enabled();
     if (!nx_ok)
-        kprintf("vmm: EFER.NXE clear; NX flag will be ignored\n");
+        klog_warning("VMM: EFER.NXE clear; NX flag will be ignored\n");
 
     uint64_t old_cr3 = read_cr3() & PTE_ADDR_MASK;
     root_phys = clone_level(old_cr3, 4);
@@ -179,7 +180,7 @@ void vmm_init(void) {
 
     apply_kernel_wx();
 
-    kprintf("→ vmm_init() root=%p nx=%d kernel=%p..%p\n",
+    klog("→ vmm_init() root=%p nx=%d kernel=%p..%p\n",
             (void *)root_phys, nx_ok ? 1 : 0,
             (void *)__kernel_start, (void *)__kernel_end);
 

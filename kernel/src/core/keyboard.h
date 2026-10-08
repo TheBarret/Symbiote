@@ -63,4 +63,8 @@ enum kbd_event kbd_poll(char *out);
  * Only call this if kbd_init() returned true. */
 char kbd_getchar(void);
 
+/* Block until a decodable event arrives. Never spins, never misses one.
+ * Returns the event; *out is set the same way kbd_poll sets it. */
+enum kbd_event kbd_wait(char *out);
+
 #endif
