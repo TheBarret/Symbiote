@@ -24,14 +24,13 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 - `core/heap.c`: `struct chunk` records its own size; `heapcheck` uses it instead of assuming `HEAP_CHUNK_SIZE`.  
 - `core/heap.c`: `kmalloc` and `krealloc` now reject sizes that would overflow the alignment and header arithmetic.  
 - `core/pmm.c`: bitmap placement in Pass 2 now aligns the candidate base before checking size against the entry's end.  
-- `ext/selftest.c`: fixed the `pmm_contiguous: ok` label to `pmm_contig: ok`.  
 
 
 - `heap.c`: `heapcheck` used a fixed chunk bound that broke on chunks grown for large requests; `struct chunk` now records its actual size and `heapcheck` uses it.
 - `heap.c`: `kmalloc` and `krealloc` now reject sizes that would overflow the alignment and header arithmetic instead of wrapping silently.
 - `pmm.c`: bitmap placement in Pass 2 now aligns the candidate base before checking size against the entry's end, so a non-page-aligned USABLE entry can't push the bitmap past its region.
 - `string.c`: `strtoll` overflow check rewritten as two explicit branches so the `INT64_MIN` boundary is visible by inspection.
-- `selftest.c`: `pmm_contiguous: ok` label corrected to `pmm_contig: ok`.
+- `selftest.c`: removed.
 - `klog.c`: missing closing brace in `klog_init` collapsed the function body and produced a cascade of parse errors; fixed.
 - `explorer.c`: selected row invisible because `tui_flush` emitted only foreground SGRs; added background SGR emission.
 - `explorer.c`: `q` returned to a black screen because `tui_end` cleared; now shows cursor and homes without clearing.
@@ -47,7 +46,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 - `src/ext/explorer/explorer.c`: single-panel VFS browser: arrow keys move, Enter descends, Backspace ascends, `q` quits. Scrolling list, highlighted selection, framed layout.
 - `core/cmd.c`: `parse_num` now wraps `kstrtoull`; `parse_spec` uses `strspn`; self-check rejects whitespace in command names.
 - `kernel/GNUmakefile`, top-level `GNUmakefile`: `EXTENSIONS` list revised; `forth` and `bf` shelved.
-- `test`, `boot/locals.fs` and `boot/locals.bf`: files removed.
+- `boot/locals.fs`, `boot/locals.bf` and various test files removed (clean up).
 
 
 ### Gaps
