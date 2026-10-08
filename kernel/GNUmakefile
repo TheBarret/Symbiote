@@ -9,10 +9,8 @@ override OUTPUT := symbiote
 # Extensions: Each name is src/ext/<name>.c or
 # the directory src/ext/<name>/. Override on the command line, e.g.:
 #   make EXTENSIONS="hello"        (headless image, serial console only)
-# Built-in:
-# fbcon		: Console buffer (required)
-# cmd_heap 	: heap utility (tool)
-EXTENSIONS ?= fbcon system memory selftest forth bf cpu
+
+EXTENSIONS ?= fbcon system memory forth bf cpu vfs explorer
 
 # default is x86_64.
 ARCH := x86_64
