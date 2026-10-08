@@ -8,7 +8,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 ## Operational
 
-<img width="1290" height="850" alt="greeter" src="https://github.com/user-attachments/assets/db988298-4826-4ba0-9833-684502993989" />  
+<img width="1290" height="850" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
 
 ## Changelog
 
@@ -99,13 +99,9 @@ Panic handler with register dump, frame-pointer backtrace, exception vector deco
 and active-extension / active-command reporting.  
 `klog` boot log with a fixed-width tag column and per-subsystem coloring.  
 
-<img width="1290" height="850" alt="tsc" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
-
 ## Virtual Filesystem
 
-Currently developing a `ramfs` that is flat and has the basic toolchain (create, read, write, and delete for files and folders).  
-
-<img width="1290" height="850" alt="vfs" src="https://github.com/user-attachments/assets/029a2e37-4383-41cc-bc55-0e6bfdb9114a" />  
+*Currently developing*  
 
 
 ---
