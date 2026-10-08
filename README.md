@@ -20,8 +20,9 @@ Booting from an ISO under BIOS and UEFI, verified against the Limine protocol re
 Memory map and HHDM offset queried from the bootloader. ACPI, RSDP, and boot modules queried via the same request mechanism.  
 
 **Consoles**  
-Two independent output paths, serial (`COM1, 115200 8N1`) and framebuffer (via `flanterm`), fed by one formatter.  
-Every byte written anywhere is also kept in a 16 KiB ring buffer, so a console that comes up late receives the entire boot log at registration.   
+Two independent output paths, serial (`COM1, 115200 8N1`) and framebuffer (via `flanterm`),  
+fed by one formatter, every byte written anywhere is also kept in a 16 KiB ring buffer,  
+so a console that comes up late receives the entire boot log at registration.  
 `console_putc` provides a character-at-a-time path for interactive echo without going through the formatter.  
 
 **Formatter**  
