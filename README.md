@@ -10,7 +10,7 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 
 <img width="1290" height="850" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
 
-## Changelog
+## Changelogs
 
 - `lib/mem.h`, `lib/mem.c`: added `memchr`, `explicit_bzero`, and named align/bit helpers;  
   (`is_power_of_two`, `align_up`, `align_down`, `ptr_align_up`, `ptr_align_down`, `bit_test`, `bit_set`, `bit_clear`).  
@@ -25,6 +25,42 @@ developed assisted with DeepSeek & ClaudeAI, using an [older kernel template](ht
 - `core/heap.c`: `kmalloc` and `krealloc` now reject sizes that would overflow the alignment and header arithmetic.  
 - `core/pmm.c`: bitmap placement in Pass 2 now aligns the candidate base before checking size against the entry's end.  
 - `ext/selftest.c`: fixed the `pmm_contiguous: ok` label to `pmm_contig: ok`.  
+
+
+- `heap.c`: `heapcheck` used a fixed chunk bound that broke on chunks grown for large requests; `struct chunk` now records its actual size and `heapcheck` uses it.
+- `heap.c`: `kmalloc` and `krealloc` now reject sizes that would overflow the alignment and header arithmetic instead of wrapping silently.
+- `pmm.c`: bitmap placement in Pass 2 now aligns the candidate base before checking size against the entry's end, so a non-page-aligned USABLE entry can't push the bitmap past its region.
+- `string.c`: `strtoll` overflow check rewritten as two explicit branches so the `INT64_MIN` boundary is visible by inspection.
+- `selftest.c`: `pmm_contiguous: ok` label corrected to `pmm_contig: ok`.
+- `klog.c`: missing closing brace in `klog_init` collapsed the function body and produced a cascade of parse errors; fixed.
+- `explorer.c`: selected row invisible because `tui_flush` emitted only foreground SGRs; added background SGR emission.
+- `explorer.c`: `q` returned to a black screen because `tui_end` cleared; now shows cursor and homes without clearing.
+- `lib/mem.h`, `lib/mem.c`: `memchr`, `explicit_bzero`, and named align/bit helpers (`is_power_of_two`, `align_up`, `align_down`, `ptr_align_up`, `ptr_align_down`, `bit_test`, `bit_set`, `bit_clear`).
+- `lib/string.h`, `lib/string.c`: `strrchr`, `strcat`, `strncat`, `strspn`, `strcspn`, `strpbrk`, `strstr`, `strtoull`, `strtoll`, `kstrtoull`.
+- `core/kprintf.h`, `core/kprintf.c`: hardened rewrite: exposed `kemit_fn`/`kvformat`, added precision (`.N`/`.*`), added `%o` and `%b`, made `h` truncate to 16 bits, sized the digit buffer for base 2, replaced the long parameter list with `struct field`.
+- `core/vfs.h`, `core/vfs.c`: new VFS layer: node model, path normalization with `.` and `..`, `vfs_open`/`close`/`read`/`write`/`lseek`, `vfs_mkdir`/`unlink`/`stat`/`readdir`. Single global spinlock with IRQ-save semantics. `vfs_open` allocates the handle before linking the node so a failed open doesn't leave a ghost. `vfs_lseek` does all offset math in `uint64_t` with explicit sign handling.
+- `core/klog.c`: timestamp prefix: `rdtsc`-based delta before the PIT is up, `[+ms.us]` after. Falls back to 1 GHz if CPUID 0x15 reports nothing, with a warning line telling the reader.
+- `core/cpu.h`, `core/cpu.c`: `rdtsc()`, `cpu_tsc_hz()` (CPUID 0x15, family/model table for the ECX==0 case, returns 0 on unknown).
+- `core/tui.h`, `core/tui.c`: small TUI core: two cell grids, rect drawing (`tui_put`/`tui_text`/`tui_fill`/`tui_box`), differential flush, `struct tui_view` with draw/key callbacks.
+- `core/keyboard.c`, `core/keyboard.h`: `kbd_wait()`: blocks on a decodable key event via `cpu_sti_hlt`, never spins, never misses one.
+- `src/ext/fs/`: six VFS shell commands: `ls`, `cat`, `mkdir`, `rm`, `write`, plus an `fs` extension init.
+- `src/ext/explorer/explorer.c`: single-panel VFS browser: arrow keys move, Enter descends, Backspace ascends, `q` quits. Scrolling list, highlighted selection, framed layout.
+- `core/cmd.c`: `parse_num` now wraps `kstrtoull`; `parse_spec` uses `strspn`; self-check rejects whitespace in command names.
+- `kernel/GNUmakefile`, top-level `GNUmakefile`: `EXTENSIONS` list revised; `forth` and `bf` shelved.
+- `test`, `boot/locals.fs` and `boot/locals.bf`: files removed.
+
+
+### Gaps
+- `cmd.c`'s `NUM_OVERFLOW` branch is unreachable after the `kstrtoull` swap.
+- `run_line`'s "max=%d" message prints `CMD_MAX_ARGS` (8), but the token limit is 10.
+- `help` in `shell.c` uses a different `argc` convention than `cmd_dispatch`.
+- `vmm.h` says `vmm_translate` returns page-aligned; the code returns the exact address.
+- `vmm.h` says `vmm_map` returns false on table-alloc failure; `alloc_table` panics.
+- `shell.h` says the shell knows no commands; `help` is inline.
+- `keyboard.h` says `kbd_getchar` spins; it halts.
+- `keyboard.c` step-7 comment says translation is off; the code sets it on.
+- `tui_flush`'s 8 KB output buffer can drop cells on a full-screen change.
+- `tui_size` is hardcoded 80×25; a `console_ops.get_size` hook would make it dynamic.
 
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
@@ -125,9 +161,9 @@ kernel/
   src/
     main.c            boot sequence
     core/             boot, cmd, console, cpu, ext, gdt, heap, idt, isr, keyboard, tui, klog,
-                      kprintf, panic, pic, pmm, serial, shell, timer, version, vmm
+                      kprintf, panic, pic, pmm, serial, shell, timer, version, vmm, vfs
     lib/              mem, string
-    ext/              fbcon, hello, cmd_heap, cmd_mem, cmd_sys, forth, selftest
+    ext/              fbcon, memory, system, forth, bf, vfs, explorer
     isr_stubs.S       interrupt entry stubs (GNU as)
   linker-scripts/     x86_64 memory layout
   GNUmakefile         kernel build
