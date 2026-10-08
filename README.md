@@ -99,21 +99,13 @@ Panic handler with register dump, frame-pointer backtrace, exception vector deco
 and active-extension / active-command reporting.  
 `klog` boot log with a fixed-width tag column and per-subsystem coloring.  
 
-<img width="812" height="573" alt="Faults" src="https://github.com/user-attachments/assets/e1c903b9-dcb8-449e-bad3-2656bc9b6f97" />
+<img width="1290" height="850" alt="tsc" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
 
 ## Virtual Filesystem
 
 Currently developing a `ramfs` that is flat and has the basic toolchain (create, read, write, and delete for files and folders).  
 
 <img width="1290" height="850" alt="vfs" src="https://github.com/user-attachments/assets/029a2e37-4383-41cc-bc55-0e6bfdb9114a" />  
-
-*early filesystem testing*  
-
-## klog + TSC Counter
-
-<img width="1290" height="850" alt="tsc" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
-
-*early tsc logging*  
 
 
 ---
