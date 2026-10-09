@@ -143,21 +143,6 @@ A view is a draw callback and a key callback, example app is the `explorer` exte
 
 ---
 
-## Known gaps
-
-- `cmd.c`'s `NUM_OVERFLOW` branch is unreachable after the `kstrtoull` swap.
-- `run_line`'s `"max=%d"` message prints `CMD_MAX_ARGS` (8), but the token limit is 10.
-- `help` in `shell.c` uses a different `argc` convention than `cmd_dispatch`.
-- `vmm.h` says `vmm_translate` returns page-aligned; the code returns the exact address.
-- `vmm.h` says `vmm_map` returns false on table-allocation failure; `alloc_table` panics.
-- `shell.h` says the shell knows no commands; `help` is inline.
-- `keyboard.h` says `kbd_getchar` spins; it halts.
-- `keyboard.c` step-7 comment says translation is off; the code sets it on.
-- `tui_flush`'s 8 KB output buffer can drop cells on a full-screen change.
-- `tui_size` is hardcoded 80×25; a `console_ops.get_size` hook would make it dynamic.
-
----
-
 ## Layout
 
 ```
