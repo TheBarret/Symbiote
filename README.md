@@ -41,6 +41,9 @@ Raw scancodes are pushed into a ring buffer by the IRQ handler; decode runs in t
 Interactive line editor with history-free backspace, in-place tokenizer, and a command dispatcher driven entirely by a link-time registry.  
 The shell itself is a dumb parser; every command is an extension. Only `help` and `halt` remain built-in.  
 
+<img width="544" height="464" alt="help" src="https://github.com/user-attachments/assets/c59d2202-a3a2-4184-9d73-cd24466d3d0e" />  
+
+
 **Memory**  
 - **Physical**: bitmap page allocator initialized from the bootloader's memory map.
   Hands out 4 KiB frames and contiguous runs. Bitmap placed in usable RAM via HHDM, not statically reserved.  
