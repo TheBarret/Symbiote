@@ -1,3 +1,4 @@
+#include "klog.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <core/cpu.h>
@@ -39,8 +40,11 @@ static void lapic_virtual_wire(void) {
     if (!(lo & (1u << 11)) || (lo & (1u << 10)))
         return;     /* APIC off: the PIC already reaches the CPU. x2APIC: registers are MSRs, not handled yet */
     uint64_t phys = (((uint64_t)hi << 32) | lo) & 0x000ffffffffff000ull;
-    if (!vmm_map(LAPIC_VA, phys, VMM_WRITE | VMM_NX | VMM_NOCACHE))
+    if (!vmm_map(LAPIC_VA, phys, VMM_WRITE | VMM_NX | VMM_NOCACHE)) {
+        /* If the map fails, IRQs never arrive and the only clue would be the absence of activity, warn user. */
+        klog_warning("→ lapic_virtual_wire(): map failed, PIC-direct only\n");
         return;
+    }
     volatile uint32_t *r = (volatile uint32_t *)LAPIC_VA;
     klog("→ lapic_virtual_wire(): lint0=%08x svr=%08x\n", r[LAPIC_LINT0], r[LAPIC_SVR]);
     r[LAPIC_SVR]   = (r[LAPIC_SVR] & ~0xFFu) | 0x100 | 0xFF;   /* software-enable, spurious vector 0xFF */
@@ -69,23 +73,36 @@ void pic_init(void) {
     lapic_virtual_wire();
 }
 
+/* Pic_mask and pic_unmask now bracket their read-modify-write of irq_mask_bits and the two write_masks() outb's in an IRQ-save region.
+ * Without it a nested (or, later, SMP) caller can lose a bit update or interleave the two outb's, leaving the shadow and the hardware out of step.
+ * Single-core boot does not hit this today; the cost of the fix is two instructions and the cost of the bug later is a mystery. */
+
 void pic_mask(int irq) {
     if (irq < 0 || irq > 15)
         return;
+    uint64_t flags = cpu_irq_save();
     irq_mask_bits |= (uint16_t)(1u << irq);
     write_masks();
+    cpu_irq_restore(flags);
 }
 
 void pic_unmask(int irq) {
     if (irq < 0 || irq > 15)
         return;
+    uint64_t flags = cpu_irq_save();
     irq_mask_bits &= (uint16_t)~(1u << irq);
     if (irq >= 8)
         irq_mask_bits &= (uint16_t)~(1u << 2);      /* open the cascade too */
     write_masks();
+    cpu_irq_restore(flags);
 }
 
+/* Bounds check added. pic_mask and pic_unmask already guard the same range; pic_eoi was the odd one out.
+ * Calling it with an out-of-range irq would send an EOI to one or both controllers with no corresponding interrupt,
+ * which can unmask a pending line early. */
 void pic_eoi(int irq) {
+    if (irq < 0 || irq > 15)
+        return;
     if (irq >= 8)
         outb(PIC2_CMD, PIC_EOI);
     outb(PIC1_CMD, PIC_EOI);

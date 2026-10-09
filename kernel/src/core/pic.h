@@ -15,12 +15,14 @@ void pic_init(void);
 void pic_mask(int irq);
 void pic_unmask(int irq);   /* unmasking a slave line (8-15) also opens the IRQ2 cascade */
 
-/* End-of-interrupt. Slave lines need both controllers acknowledged. */
+/* End-of-interrupt. Slave lines need both controllers acknowledged.
+ *
+ * Do NOT call this after pic_irq_is_spurious() returns true.
+ * That function already sent the correct (or no) EOI, and a second one will desynchronise the in-service register. */
 void pic_eoi(int irq);
 
 /* IRQ7 and IRQ15 can fire with nothing behind them.
- * Returns true if this one is spurious; the right (or no) EOI has already been sent,
- * so the caller must NOT call pic_eoi(). */
+ * Returns true if this one is spurious; the right (or no) EOI has already been sent, so the caller must NOT call pic_eoi(). */
 bool pic_irq_is_spurious(int irq);
 
 #endif

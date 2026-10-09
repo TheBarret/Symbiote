@@ -192,7 +192,7 @@ void vfs_init(void) {
 
     if (!root)
         PANIC("vfs init: cannot allocate root");
-    klog("→ vfs_init() root mounted (flags= %lu )\n", flags);
+    klog("→ vfs_init() root mounted (flags=%lu)\n", flags);
 }
 
 /*  open / close  */

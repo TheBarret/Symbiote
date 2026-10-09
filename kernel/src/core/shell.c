@@ -8,56 +8,34 @@
 #include <core/keyboard.h>
 #include <core/kprintf.h>
 #include <core/shell.h>
-#include <core/cmd.h>
 
 #define SHELL_LINE_MAX  128
-#define SHELL_ARG_MAX   (CMD_MAX_ARGS + 1)      /* the command name + its arguments */
-
-/* Built-in help */
-static int cmd_help_fn(int argc, char **argv) {
-    if (argc == 1) {
-        /* List every registered command. */
-        size_t n = cmd_count();
-        kprintf("commands (%zu):\n", n);
-        for (size_t i = 0; i < n; i++) {
-            const struct sym_cmd *c = cmd_at(i);
-            kprintf("  %-12s  %s\n", c->name, c->help);
-        }
-        return 0;
-    }
-
-    if (argc == 2) {
-        /* Detail for one command. */
-        const struct sym_cmd *c = cmd_find(argv[1]);
-        if (!c) {
-            kprintf("help: no such command: %s\n", argv[1]);
-            return 1;
-        }
-        kprintf("%s: %s\n", c->name, c->help);
-        cmd_print_usage(c);
-        return 0;
-    }
-
-    kprintf("usage: help [command]\n");
-    return 2;
-}
+/* argv[0] is the command name; the rest are its arguments.
+ * So thetokenizer's cap is one more than the maximum argument count a command may declare. */
+#define SHELL_ARG_MAX   (CMD_MAX_ARGS + 1)
 
 /*  line input  */
 
 /* Read one line from the keyboard into buf (up to cap-1 chars).
- * Handles backspace, echoes as it goes, returns the length.
- */
+ * Handles backspace and echoes as it goes.
+ *
+ * Returns the length on Enter, or (size_t)-1 if the line was aborted (Ctrl-C). An empty line returns 0. */
 static size_t read_line(char *buf, size_t cap) {
     size_t len = 0;
     for (;;) {
-        char c = kbd_getchar();
+        int c = kbd_getchar();
 
         if (c == '\n' || c == '\r') {
             console_putc('\n');
             break;
         }
 
-        if (c == '\b') {
+        if (c == 0x03) {            /* Ctrl-C: abandon the line */
+            console_putc('\n');
+            return (size_t)-1;
+        }
+
+        if (c == '\b' || c == 0x7F) { /* Backspace / DEL */
             if (len > 0) {
                 len--;
                 console_putc('\b');
@@ -73,8 +51,8 @@ static size_t read_line(char *buf, size_t cap) {
         if (len + 1 >= cap)
             continue;
 
-        buf[len++] = c;
-        console_putc(c);
+        buf[len++] = (char)c;
+        console_putc((char)c);
     }
     buf[len] = '\0';
     return len;
@@ -82,9 +60,10 @@ static size_t read_line(char *buf, size_t cap) {
 
 /*  tokenizer  */
 
-/* Split line in place into argv. Returns argc, or -1 if the line has more
- * than `max` words (the old version silently dropped the extras).
- * Modifies the buffer: replaces spaces with NULs. */
+/* Split line in place into argv. Returns argc, or -1 if the line has more than `max` words.
+ *
+ * On success, argv[argc] is set to NULL so callers that want a NULL-terminated vector (rather than an (argc, argv) pair) can use it.
+ * The caller must provide argv with room for max + 1 entries. */
 static int tokenize(char *line, char **argv, int max) {
     int argc = 0;
     char *p = line;
@@ -99,30 +78,25 @@ static int tokenize(char *line, char **argv, int max) {
         while (*p && *p != ' ' && *p != '\t')
             p++;
     }
+    argv[argc] = NULL;
     return argc;
 }
 
 /*  one line  */
 
 static void run_line(char *line) {
-    char *argv[SHELL_ARG_MAX];
+    /* One extra slot for the NULL terminator that tokenize installs. */
+    char *argv[SHELL_ARG_MAX + 1];
     int argc = tokenize(line, argv, SHELL_ARG_MAX);
     if (argc < 0) {
-        kprintf("Too many arguments (max=%d)\n",
-                CMD_MAX_ARGS);
+        kprintf("Too many words (max=%d including the command name)\n",
+                SHELL_ARG_MAX);
         return;
     }
     if (argc == 0)
         return;
 
-    if (strcmp(argv[0], "help") == 0) {
-        int rc = cmd_help_fn(argc, argv);
-        if (rc == 2)
-            kprintf("Usage: help <command>\n");
-        return;
-    }
-
-    /* The registry does everything else: look up, validate, run, report. */
+    /* Everything, including help, goes through the registry. If nothing is registered under that name, cmd_dispatch reports it. */
     cmd_dispatch(argc, argv);
 }
 
@@ -134,13 +108,9 @@ void shell_run(void) {
         cpu_halt_forever();
     }
 
-    /* Catch duplicate names and broken parameter specs now, loudly,
-     * instead of when somebody happens to type the command. Silent when all is well. */
     int problems = cmd_selfcheck();
     if (problems)
         kprintf("Warning: %d issues detected in look-up table.\n", problems);
-
-    // Todo: formal post-greet context
 
     kprintf("\nType 'help' for a list of commands, ready when you are!\n");
 
@@ -148,6 +118,8 @@ void shell_run(void) {
     for (;;) {
         kprintf("> ");
         size_t len = read_line(line, sizeof line);
+        if (len == (size_t)-1)
+            continue;               /* aborted with Ctrl-C */
         if (len == 0)
             continue;
         run_line(line);
