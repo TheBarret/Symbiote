@@ -108,6 +108,27 @@ A view is a draw callback and a key callback, example app is the `explorer` exte
 - `selftest.c`: removed.
 - `boot/locals.fs`, `boot/locals.bf`, and various test files removed.
 - `kernel/GNUmakefile`, top-level `GNUmakefile`: `EXTENSIONS` list revised; `forth` and `bf` shelved.
+- `core/tui.h`: added a screen-ownership invariant comment. `tui_begin`/`tui_end` bracket a session; between them the TUI owns the screen, before and after the console does, with default SGR and a visible cursor.
+- `core/tui.h`: documented that `TUI_ATTR(fg, bg)` backgrounds are honoured by `tui_flush`; previously the byte was accepted and silently dropped.
+- `core/tui.h`, `core/tui.c`: added `tui_run_view`, which brackets `tui_run` with `tui_begin`/`tui_end`. Prevents a view that returns early, or a draw callback that panics, from stranding the screen in TUI mode with the cursor hidden.
+- `core/tui.c`: `tui_begin` now emits `\x1b[0m` before clearing. A prior command's SGR no longer leaks into the TUI's first frame.
+- `core/tui.c`: `tui_end` now resets SGR, clears the screen, and homes the cursor, in addition to showing it. The previous version relied on `tui_begin`'s clear and used a trailing `\n` as a stand-in for home.
+- `core/tui.c`: `tui_flush` now emits both nibbles of the attribute byte. Backgrounds were advertised by the macro and ignored by the emitter.
+- `core/tui.c`: `tui_flush` drains to `console_write` in chunks instead of accumulating into a fixed 8 KiB buffer. The old buffer filled silently on full-screen changes, dropping cells and leaving the front grid out of sync with the back grid.
+- `core/tui.c`: `tui_flush` now advances `last_y` alongside `last_x` after each character write. `last_y` was previously set only inside the cursor-move branch, which happened to work but was not an invariant.
+- `core/tui.c`: moved the SGR tables to file scope and deleted the dead `emit_attr` helper.
+- `core/tui.c`: replaced hand-counted escape-sequence lengths with `sizeof - 1` over file-scope string constants.
+- `core/pic.h`: documented that `pic_eoi` must not be called after `pic_irq_is_spurious` returns true; that function already sent the correct (or no) EOI, and a second one desyncs the in-service register.
+- `core/pic.c`: `pic_eoi` now bounds-checks `irq`, matching `pic_mask` and `pic_unmask`. An out-of-range call previously sent an EOI with no corresponding interrupt.
+- `core/pic.c`: `pic_mask` and `pic_unmask` now bracket the read-modify-write of `irq_mask_bits` and the two `write_masks` `outb`s in a `cpu_irq_save`/`cpu_irq_restore` region. Removes a lost-update race with nested or future SMP callers.
+- `core/pic.c`: `lapic_virtual_wire` now logs when the LAPIC MMIO map fails. Silent failure on the boot path meant IRQs never arrived and the only clue was the absence of activity.
+- `core/cpu.h`: port I/O (`outb`, `inb`, `inw`, `outl`, `inl`) now carries a `"memory"` clobber. Port accesses can have memory side effects and must not be reordered relative to memory.
+- `core/cpu.h`: `cpu_hlt` now carries a `"memory"` clobber. It is a synchronisation point; code after the halt may depend on data the wakeup interrupt wrote.
+- `core/cpu.h`: `read_cr2`, `read_cr3`, `write_cr3`, and `invlpg` now carry a `"memory"` clobber. A CR3 write remaps the whole address space; an `invlpg` invalidates a TLB entry. Stores must not hoist across either.
+- `core/cpu.h`: added `outw` for symmetry with `inw`.
+- `core/cpu.h`: moved `outl` and `inl` up into the Port I/O section. They were filed under "PCI handlers" and read as PCI-specific when they are not.
+- `core/cpu.h`: deleted the commented-out `rdtsc` block; the live version and the commented one were identical.
+
 
 ---
 
