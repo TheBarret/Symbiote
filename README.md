@@ -12,6 +12,9 @@ developed with assistance from DeepSeek and ClaudeAI, using an [older kernel tem
 <img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/8d61b571-d70e-478a-9461-3366b913cab4" />
 
 
+<img width="1017" height="504" alt="layers" src="https://github.com/user-attachments/assets/ff1a8b3b-88ba-48c0-a2aa-4925309e9c20" />
+
+
 ---
 
 ## Operational
