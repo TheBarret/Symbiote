@@ -9,7 +9,8 @@ developed with assistance from DeepSeek and ClaudeAI, using an [older kernel tem
 
 ## Screenshot
 
-<img width="1290" height="850" src="https://github.com/user-attachments/assets/231bb479-ee01-4b8d-bbbb-1976283d6852" />  
+<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/8d61b571-d70e-478a-9461-3366b913cab4" />
+
 
 ---
 
@@ -53,18 +54,21 @@ The shell itself is a dumb parser; every command is an extension. Only `help` an
 - **Filesystem**: in-memory `ramfs` under a thin VFS layer. Node model with path normalization (`.`, `..`),
   `vfs_open`/`close`/`read`/`write`/`lseek`, `vfs_mkdir`/`unlink`/`stat`/`readdir`. Single global spinlock with IRQ-save semantics.  
 
+  <img width="401" height="214" alt="filesystem" src="https://github.com/user-attachments/assets/36113f79-2f7c-4140-b344-a0c50b0bf234" />  
+
+
 **Interrupts**
 
-<img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
+GDT with a TSS and IST stacks for the double-fault vector. IDT with all 256 gates filled:  
+exceptions 0–31, IRQs 32–47, default handler beyond that.  
+NASM-free stubs in isr_stubs.S, compiled by the same GCC invocation as the rest of the kernel.  
 
-    GDT with a TSS and IST stacks for the double-fault vector. IDT with all 256 gates filled:  
-    exceptions 0–31, IRQs 32–47, default handler beyond that.  
-    NASM-free stubs in isr_stubs.S, compiled by the same GCC invocation as the rest of the kernel.  
-    
-    PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
-    LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
-    PIT at 1000 Hz driving a tick counter, timer_sleep_ms and uptime_ms.  
-    Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
+PIC remap to vectors 0x20–0x2F, mask-on-register, per-line spurious handling.  
+LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
+PIT at 1000 Hz driving a tick counter, timer_sleep_ms and uptime_ms.  
+Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
+
+<img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
 
 **Extensions**  
 
@@ -72,20 +76,20 @@ Link-time discovery via a dedicated linker section, priority-ordered initializat
 A parallel command registry (`SYM_COMMAND`, section `.symbiote_cmd`) does the same for shell commands,  
 with declarative parameter specs, centralized argument validation, and a boot-time self-check that catches duplicate names and malformed specs.  
 
+<img width="643" height="219" alt="toolkits" src="https://github.com/user-attachments/assets/76a878a2-1a36-4e68-a941-0dea270d3d28" />
+
 **Diagnostics**  
 
 Supports a panic handler with register dump, frame-pointer backtrace, exception vector decoding, and basic reporting.  
 The `klog` is primitive log organizer with a fixed-width tag column, per-subsystem coloring, and an `rdtsc`-based timestamp prefix.  
-*(microsecond deltas after CPUID calibration, 1 GHz fallback otherwise)*    
+*(microsecond deltas after CPUID calibration, default value as fallback otherwise)*    
 
 **Text-based User Interface - TUI Engine**  
 
 `core/tui` is a small terminal UI core: two cell grids, rect-based drawing, differential flush.  
 A view is a draw callback and a key callback, example app is the `explorer` extension, a single-panel VFS browser.  
 
-<img width="1290" height="850" alt="TUI" src="https://github.com/user-attachments/assets/74931765-08a2-4b49-aa24-5a7fe35ec625" />
-
-*More toolkits can be custom made*  
+<img width="744" height="438" alt="TUI" src="https://github.com/user-attachments/assets/5cea79c7-3963-43c5-a505-893b60ab8e94" />
 
 ---
 
