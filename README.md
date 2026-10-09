@@ -127,7 +127,6 @@ A view is a draw callback and a key callback, example app is the `explorer` exte
 - `core/cpu.h`: `read_cr2`, `read_cr3`, `write_cr3`, and `invlpg` now carry a `"memory"` clobber. A CR3 write remaps the whole address space; an `invlpg` invalidates a TLB entry. Stores must not hoist across either.
 - `core/cpu.h`: added `outw` for symmetry with `inw`.
 - `core/cpu.h`: moved `outl` and `inl` up into the Port I/O section. They were filed under "PCI handlers" and read as PCI-specific when they are not.
-- `core/cpu.h`: deleted the commented-out `rdtsc` block; the live version and the commented one were identical.
 
 
 ---
