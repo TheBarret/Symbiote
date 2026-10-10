@@ -41,3 +41,4 @@
 - `core/config.h`: created, begun to refactor global kernel settings, by analyzing all `core/*` modules, taking abstract parameters, mostly types of; sizes, shapes, maximums and minimums.
 - `core/version.h`: added ref: `config.h`, all core codebase sources should `#include <version.h>`, it now comes with `config.h` included, resolving module parameter reference overlays.
 - `core/serial.h`: marked for a new design, current logic is not functional on `QEMU -serial pty -display none -monitor none` / `picocom` host-terminal mode, only output, no input, `shell.c` is using PS/2 exclusively at this moment.
+- `core/host.c`, `core/host.h`, `src/ext/configure/*`: Probe extension and driver removed (out of favor).
