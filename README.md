@@ -65,12 +65,12 @@ API: `vfs_open`/`close`/`read`/`write`/`lseek`, `vfs_mkdir`/`unlink`/`stat`/`rea
 
 ## Interrupts
 
-GDT with a TSS and IST stacks for the double-fault vector, IDT with all 256 gates filled:  
+GDT with a TSS and IST stacks for the double-fault vector, IDT with all `256` gates filled:  
 exceptions `0–31`, IRQs `32–47`, default handler beyond that.  
 NASM-free stubs in `isr_stubs.S`, compiled by the same GCC invocation as the rest of the kernel.  
 
 PIC remap to vectors `0x20–0x2F`, mask-on-register, per-line spurious handling.  
-LAPIC enabled and LINT0 wired to ExtINT so PIC interrupts reach the CPU.  
+LAPIC enabled and `LINT0` wired to `ExtINT` so PIC interrupts reach the CPU.  
 PIT at `1000 Hz` driving a tick counter, timer_sleep_ms and uptime_ms.  
 Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
 
