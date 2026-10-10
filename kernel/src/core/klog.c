@@ -22,7 +22,7 @@ void klog_init(void) {
         kprintf("klog_init(): TSC Found, %llu MHz\n", (unsigned long long)(klog_tsc_hz / 1000000));
     } else {
         klog_tsc_hz = 2500000000ull;    /* 2.5 GHz fallback, best-effort */
-        kprintf("klog_init(): TSC not found (fallback: 2.5Ghz)\n");
+        kprintf("klog_init(): TSC not found (fallback: 2.5 Ghz)\n");
     }
 }
 

@@ -2,8 +2,10 @@
 #define CORE_TIMER_H
 
 #include <stdint.h>
+#include "core/version.h"
 
-#define TIMER_HZ 1000
+// Moved to ref: core/version.h
+//#define TIMER_HZ 1000
 
 /* PIT channel 0 as the system tick. Needs idt_init() and pic_init();
  * the tick only starts arriving once interrupts are enabled with cpu_sti(). */

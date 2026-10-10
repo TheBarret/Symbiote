@@ -2,11 +2,13 @@
 #define CORE_PIC_H
 
 #include <stdbool.h>
+#include "core/version.h"
 
 /* 8259 PIC pair. This is the seam an APIC would replace:
  * callers only use mask / unmask / eoi, so swapping controllers changes pic.c and nothing else. */
 
-#define PIC_VECTOR_BASE 0x20    /* IRQ0 -> vector 0x20 ... IRQ15 -> vector 0x2f */
+// Moved to ref: core/version.h
+//#define PIC_VECTOR_BASE 0x20    /* IRQ0 -> vector 0x20 ... IRQ15 -> vector 0x2f */
 
 /* Remap the PIC away from the exception vectors and mask every line.
  * Call this before the first cpu_sti(). */

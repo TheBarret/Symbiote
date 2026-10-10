@@ -1,6 +1,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <core/version.h>
 #include <core/cpu.h>
 #include <core/isr.h>
 #include <core/panic.h>
@@ -8,9 +9,10 @@
 #include <core/kprintf.h>
 #include <core/klog.h>
 
-#define PIT_FREQ  1193182ull        /* Hz, the PIT's input clock */
-#define PIT_CH0   0x40
-#define PIT_CMD   0x43
+// Moved to ref: core/version.h
+//#define PIT_FREQ  1193182ull        /* Hz, the PIT's input clock */
+//#define PIT_CH0   0x40
+//#define PIT_CMD   0x43
 
 static volatile uint64_t ticks;
 static uint64_t divisor = 1;

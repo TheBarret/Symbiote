@@ -1,9 +1,11 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <core/console.h>
+#include <core/version.h>
 
-#define CONSOLE_MAX 4
-#define LOG_SIZE    16384   /* boot log kept in RAM for late-attaching consoles */
+// Moved to ref: core/version.h
+//#define CONSOLE_MAX 4
+//#define LOG_SIZE    16384   /* boot log kept in RAM for late-attaching consoles */
 
 static const struct console_ops *consoles[CONSOLE_MAX];
 static size_t console_count;

@@ -18,8 +18,8 @@
  * an IRQ handler that calls into the VFS cannot arrive while the interrupted context holds the lock.
  * On UP this is a couple of instructions;
  * on SMP it serializes the whole tree, which is the right granularity until a per-node lock is justified. */
-
 static volatile int vfs_lock;
+
 
 static uint64_t vfs_acquire(void) {
     uint64_t flags = cpu_irq_save();
@@ -33,12 +33,8 @@ static void vfs_release(uint64_t flags) {
     cpu_irq_restore(flags);
 }
 
-/*  path handling  */
+/* path handling */
 
-/* Normalize "a/b/c" style paths: collapse repeated slashes,
- * resolve "." and "..", produce an absolute path ("/a/b/c"). Writes to `out`,
- * which must be VFS_PATH_MAX bytes. Returns false if the path is empty,
- * a component is too long, the path is too long, or ".." climbs above root. */
 static bool path_normalize(const char *path, char *out) {
     if (!path || !*path)
         return false;
@@ -77,18 +73,25 @@ static bool path_normalize(const char *path, char *out) {
     *o++ = '/';
     for (size_t i = 0; i < ncomp; i++) {
         const char *c = comps[i];
-        while (*c && *c != '/')
+        size_t clen = 0;
+        while (c[clen] && c[clen] != '/')
+            clen++;
+
+        /* Pre-check bounds before writing component to prevent any overflow */
+        if ((size_t)(o - out) + clen + 1 >= VFS_PATH_MAX)
+            return false;
+
+        for (size_t j = 0; j < clen; j++)
             *o++ = *c++;
+
         if (i + 1 < ncomp)
             *o++ = '/';
-        if ((size_t)(o - out) >= VFS_PATH_MAX - 1)
-            return false;
     }
     *o = '\0';
     return true;
 }
 
-/*  node model  */
+/* node model */
 
 struct vfs_node {
     enum vfs_type type;
@@ -103,17 +106,6 @@ struct vfs_node {
 
 static struct vfs_node *root;
 
-/*  lookup (unused)  */
-
-//static struct vfs_node *dir_find(struct vfs_node *dir, const char *name) {
-//    for (struct vfs_node *c = dir->children; c; c = c->next)
-//        if (strcmp(c->name, name) == 0)
-//            return c;
-//    return NULL;
-//}
-
-/* Walk a normalized path from root. Returns the node, or NULL.
- * If `parent_out` is non-NULL, it receives the parent directory of the final component (useful for create/unlink). */
 static struct vfs_node *path_lookup(const char *path, struct vfs_node **parent_out) {
     if (path[0] != '/')
         return NULL;
@@ -156,8 +148,6 @@ static struct vfs_node *path_lookup(const char *path, struct vfs_node **parent_o
     }
 }
 
-/*  node creation / destruction  */
-
 static struct vfs_node *node_new(enum vfs_type type, const char *name, size_t name_len) {
     if (name_len > VFS_NAME_MAX)
         return NULL;
@@ -171,6 +161,8 @@ static struct vfs_node *node_new(enum vfs_type type, const char *name, size_t na
 }
 
 static void node_free_recursive(struct vfs_node *n) {
+    if (!n)
+        return;
     if (n->type == VFS_DIR) {
         struct vfs_node *c = n->children;
         while (c) {
@@ -183,8 +175,6 @@ static void node_free_recursive(struct vfs_node *n) {
     kfree(n);
 }
 
-/*  init  */
-
 void vfs_init(void) {
     uint64_t flags = vfs_acquire();
     root = node_new(VFS_DIR, "", 0);
@@ -194,8 +184,6 @@ void vfs_init(void) {
         PANIC("vfs init: cannot allocate root");
     klog("→ vfs_init() root mounted (flags=%lu)\n", flags);
 }
-
-/*  open / close  */
 
 struct vfs_file {
     struct vfs_node *node;
@@ -246,15 +234,12 @@ struct vfs_file *vfs_open(const char *path, int flags) {
 
     struct vfs_file *f = kzalloc(sizeof *f);
     if (!f) {
-        /* The node was created in this call and is not yet linked.
-         * Free it so a failed open does not leave a ghost file behind. */
         if (created)
             node_free_recursive(node);
         vfs_release(lock);
         return NULL;
     }
 
-    /* Link after every allocation has succeeded. */
     if (created) {
         node->next = parent->children;
         parent->children = node;
@@ -270,12 +255,8 @@ struct vfs_file *vfs_open(const char *path, int flags) {
 }
 
 void vfs_close(struct vfs_file *f) {
-    /* Closing only frees the handle; the node stays in the tree.
-     * No tree access, so no lock is required. */
     kfree(f);
 }
-
-/*  read / write / seek  */
 
 long vfs_read(struct vfs_file *f, void *buf, size_t n) {
     if (!f || !buf)
@@ -308,13 +289,10 @@ long vfs_write(struct vfs_file *f, const void *buf, size_t n) {
     uint64_t lock = vfs_acquire();
     long rv = -1;
 
-    /* f->pos + n must not wrap. */
     if (f->pos + n < f->pos)
         goto out;
 
     uint64_t end = f->pos + n;
-    /* end must fit in size_t so krealloc's argument is exact.
-     * On x86_64 size_t is 64-bit and this is a no-op; on narrower targets it is the guard against silent truncation. */
     if (end > SIZE_MAX)
         goto out;
 
@@ -343,15 +321,12 @@ long vfs_lseek(struct vfs_file *f, long off, int whence) {
 
     uint64_t base;
     switch (whence) {
-    case 0: base = 0;                       break;   /* SET */
-    case 1: base = f->pos;                  break;   /* CUR */
-    case 2: base = f->node->size;           break;   /* END */
+    case 0: base = 0;                 break;   /* SET */
+    case 1: base = f->pos;              break;   /* CUR */
+    case 2: base = f->node->size;       break;   /* END */
     default: vfs_release(lock); return -1;
     }
 
-    /* Do the offset addition in uint64_t so signed overflow cannot occur.
-     * A negative `off` is converted to its magnitude first;
-     * the -(off + 1) + 1 form is safe even for LONG_MIN. */
     uint64_t np;
     if (off < 0) {
         uint64_t mag = (uint64_t)(-(off + 1)) + 1;
@@ -368,16 +343,12 @@ long vfs_lseek(struct vfs_file *f, long off, int whence) {
         np = base + (uint64_t)off;
     }
 
-    /* POSIX-conservative: refuse to seek past end-of-file.
-     * Creating a sparse file by seeking past `size` is not supported by ramfs. */
     if (np > f->node->size) {
         vfs_release(lock);
         return -1;
     }
     f->pos = np;
 
-    /* The return value is long; on targets where long is narrower than uint64_t,
-     * refuse rather than wrap. On x86_64 this never fires. */
     if (np > (uint64_t)LONG_MAX) {
         vfs_release(lock);
         return -1;
@@ -386,8 +357,6 @@ long vfs_lseek(struct vfs_file *f, long off, int whence) {
     vfs_release(lock);
     return rv;
 }
-
-/*  mkdir / unlink / stat / readdir  */
 
 int vfs_mkdir(const char *path) {
     char norm[VFS_PATH_MAX];
@@ -440,6 +409,12 @@ int vfs_unlink(const char *path) {
         return -1;      /* not found, or attempting to remove root */
     }
 
+    /* Optional safety: refuse to unlink non-empty directories unless intended */
+    if (node->type == VFS_DIR && node->children != NULL) {
+        vfs_release(lock);
+        return -1;      /* directory not empty */
+    }
+
     struct vfs_node **pp = &parent->children;
     while (*pp && *pp != node)
         pp = &(*pp)->next;
@@ -448,9 +423,6 @@ int vfs_unlink(const char *path) {
 
     vfs_release(lock);
 
-    /* Free outside the lock: node_free_recursive touches the heap,
-     * and holding the VFS spinlock across a heap call would serialize every allocator access against every filesystem access.
-     * Nothing else references the node once it is unlinked. */
     node_free_recursive(node);
     return 0;
 }

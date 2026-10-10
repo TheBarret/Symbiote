@@ -1,10 +1,12 @@
 #include <stddef.h>
 #include <stdint.h>
+#include <core/version.h>
 #include <core/cpu.h>
 #include <core/console.h>
 #include <core/serial.h>
 
-#define COM1 0x3F8
+// Moved to ref: core/version.h
+//#define COM1 0x3F8
 
 static void serial_putc(char c) {
     /* Wait (bounded) until the transmit holding register is empty.

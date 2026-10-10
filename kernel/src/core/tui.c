@@ -15,25 +15,18 @@ struct cell {
     uint8_t attr;
 };
 
-static struct cell *front;
-static struct cell *back;
-static int tui_w;
-static int tui_h;
+static struct cell *front = NULL;
+static struct cell *back = NULL;
+static int tui_w = 0;
+static int tui_h = 0;
 
-/* default = 80x25 */
+/* Default dimensions */
 #define TUI_W 80
 #define TUI_H 25
 
-/* Escape sequences used to be written inline with hand-counted lengths (13, 7).
- * Both were correct, but a future edit to the string would not update the count.
- * They are now file-scope constants passed with sizeof - 1. */
 static const char tui_enter[] = "\x1b[0m\x1b[2J\x1b[H\x1b[?25l";
 static const char tui_leave[] = "\x1b[0m\x1b[2J\x1b[H\x1b[?25h";
 
-/* Patch note (2026-10): the SGR tables moved out of the per-cell loop.
- * They were function-local statics, which the compiler hoists,
- * but reading them as if they were declared per cell made the flush harder to follow than it needed to be.
- * Background is now emitted too; see the attribute comment in tui.h. */
 static const char *const sgr_fg[8] = {
     "\x1b[30m", "\x1b[31m", "\x1b[32m", "\x1b[33m",
     "\x1b[34m", "\x1b[35m", "\x1b[36m", "\x1b[37m",
@@ -44,6 +37,11 @@ static const char *const sgr_bg[8] = {
 };
 
 bool tui_begin(void) {
+    /* Prevent double-allocation leaks if already active */
+    if (front || back) {
+        tui_end();
+    }
+
     tui_w = TUI_W;
     tui_h = TUI_H;
 
@@ -60,21 +58,14 @@ bool tui_begin(void) {
     memset(front, 0, cells * sizeof *front);
     memset(back,  0, cells * sizeof *back);
 
-    /* Reset SGR, clear screen, home, hide cursor. */
     console_write(tui_enter, sizeof tui_enter - 1);
     return true;
 }
 
-/* Previous tui_end only showed the cursor and wrote a newline.
- * That happened to look right because tui_begin had* cleared the screen and nothing had overwritten it,
- * but it left three things undone:
- *   - SGR was not reset, so the shell prompt inherited whatever color
- *     the last frame ended on;
- *   - the screen was not cleared, so a view that exited without a full
- *     redraw left its last cells on screen;
- *   - the cursor was not homed, so the prompt started on line 2.
- * The newline was a stand-in for the missing home. All three are now done explicitly, matching tui_begin's reset-and-clear. */
 void tui_end(void) {
+    if (!front && !back)
+        return;
+
     console_write(tui_leave, sizeof tui_leave - 1);
     kfree(front);
     kfree(back);
@@ -166,23 +157,15 @@ void tui_box(struct tui_rect r, uint8_t attr) {
     }
 }
 
-/* The flush used to accumulate the whole frame* into a stack buffer before one console_write.
- * That kept the "one write per frame" property but introduced a silent failure mode:
- * when the buffer filled, the remaining changed cells were dropped and the front grid was not advanced past them,
- * so they never repainted.
- *
- * The property worth keeping is "the terminal sees a few large writes, not one per cell".
- * That is preserved here by draining the accumulator to console_write whenever it approaches full.
- * The drain re-arms the cursor and attribute trackers,
- * so the next cell re-emits a cursor move and an SGR and the terminal is left in a known state.
- *
- * The dead emit_attr helper below the flush was removed;
- * it had been superseded by the inline SGR selection and was kept only as a comment. */
-
 #define TUI_FLUSH_BUF 4096
-/* Leave room for the worst-case single-cell emission:
- * cursor move (8) + reset + fg + bg (12) + one char. 32 is generous. */
-#define TUI_FLUSH_DRAIN_AT (TUI_FLUSH_BUF - 32)
+#define TUI_FLUSH_DRAIN_AT (TUI_FLUSH_BUF - 64) /* Generous safety headroom */
+
+static inline void buf_append(char *out, size_t *len, size_t max, const char *src, size_t srclen) {
+    if (*len + srclen <= max) {
+        memcpy(out + *len, src, srclen);
+        *len += srclen;
+    }
+}
 
 void tui_flush(void) {
     if (!front || !back)
@@ -201,65 +184,51 @@ void tui_flush(void) {
             if (f->ch == b->ch && f->attr == b->attr)
                 continue;
 
-            /* Drain before the worst-case emission can overflow. */
+            /* Drain if buffer approaches capacity */
             if (len >= TUI_FLUSH_DRAIN_AT) {
                 console_write(out, len);
                 len = 0;
-                /* The terminal is now somewhere we no longer track.
-                 * Force the next cell to re-emit a cursor move and SGR. */
                 last_x = -1;
                 last_y = -1;
                 last_attr = 0xFF;
             }
 
-            /* If the cursor is not already where we want it, move it. */
+            /* Move cursor if needed */
             if (x != last_x || y != last_y) {
                 char seq[16];
                 int n = ksnprintf(seq, sizeof seq, "\x1b[%d;%dH", y + 1, x + 1);
-                for (int i = 0; i < n && len < sizeof out; i++)
-                    out[len++] = seq[i];
+                if (n > 0) {
+                    buf_append(out, &len, sizeof out, seq, (size_t)n);
+                }
                 last_x = x;
                 last_y = y;
             }
 
-            /* If the attribute is not what it was, reset and set. */
+            /* Set attributes if changed */
             if (b->attr != last_attr) {
                 uint8_t fg = b->attr & 0x0F;
                 uint8_t bg = (b->attr >> 4) & 0x0F;
-                size_t sl;
 
-                /* Always reset first so a stale background from the
-                 * previous cell does not leak into this one. */
                 const char *reset = "\x1b[0m";
-                sl = strlen(reset);
-                for (size_t i = 0; i < sl && len < sizeof out; i++)
-                    out[len++] = reset[i];
+                buf_append(out, &len, sizeof out, reset, 4);
 
                 if (b->attr != 0) {
                     if (fg < 8) {
                         const char *s = sgr_fg[fg];
-                        sl = strlen(s);
-                        for (size_t i = 0; i < sl && len < sizeof out; i++)
-                            out[len++] = s[i];
+                        buf_append(out, &len, sizeof out, s, strlen(s));
                     }
                     if (bg != 0 && bg < 8) {
                         const char *s = sgr_bg[bg];
-                        sl = strlen(s);
-                        for (size_t i = 0; i < sl && len < sizeof out; i++)
-                            out[len++] = s[i];
+                        buf_append(out, &len, sizeof out, s, strlen(s));
                     }
                 }
                 last_attr = b->attr;
             }
 
-            if (len < sizeof out)
+            if (len < sizeof out) {
                 out[len++] = b->ch;
+            }
 
-            /* Last_y is now advanced alongside last_x.
-             * Writing a character moves the cursor one column
-             * to the right on the same row, so last_y must stay at y.
-             * It happened to be correct before because last_y was only ever set inside the cursor-move branch,
-             * but that is a coincidence, not an invariant. */
             last_x = x + 1;
             last_y = y;
 
@@ -267,15 +236,15 @@ void tui_flush(void) {
         }
     }
 
-    if (len)
+    if (len > 0) {
         console_write(out, len);
+    }
 }
 
 void tui_run(struct tui_view *v) {
     if (!v)
         return;
 
-    /* Draw and flush once before the first key. */
     if (v->draw)
         v->draw(v);
     tui_flush();
@@ -293,9 +262,6 @@ void tui_run(struct tui_view *v) {
     }
 }
 
-/* Tui_run does not call tui_begin or tui_end, so every caller had to remember the pairing.
- * A view that returned through the panic path left the cursor hidden and the screen in TUI mode.
- * This entry point makes the pairing automatic. */
 bool tui_run_view(struct tui_view *v) {
     if (!tui_begin())
         return false;

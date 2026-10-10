@@ -2,6 +2,7 @@
 #include <stddef.h>
 #include <stdint.h>
 #include <lib/string.h>
+#include <core/version.h>
 #include <core/cmd.h>
 #include <core/console.h>
 #include <core/cpu.h>
@@ -9,7 +10,9 @@
 #include <core/kprintf.h>
 #include <core/shell.h>
 
-#define SHELL_LINE_MAX  128
+// Moved to ref: core/version.h
+//#define SHELL_LINE_MAX  128
+
 /* argv[0] is the command name; the rest are its arguments.
  * So thetokenizer's cap is one more than the maximum argument count a command may declare. */
 #define SHELL_ARG_MAX   (CMD_MAX_ARGS + 1)

@@ -3,6 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <core/version.h>
 
 /* Virtual memory manager.
  *
@@ -12,7 +13,8 @@
  * Huge pages inherited from Limine (HHDM) are left intact; do not try to map/unmap inside those ranges.
  * No locking, same single-threaded boot assumption as the PMM. */
 
-#define VMM_PAGE_SIZE 4096
+// Moved to ref: core/version.h
+//#define VMM_PAGE_SIZE 4096
 
 /* PTE flag bits passed to vmm_map / vmm_protect. Present is always implied. */
 #define VMM_WRITE   (1ull << 0)

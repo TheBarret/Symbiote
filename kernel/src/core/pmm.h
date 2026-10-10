@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include "core/version.h"
 
 /* Physical memory manager.
  *
@@ -18,7 +19,8 @@
  * No locking, single-threaded boot assumption, same as the rest of the kernel.
  * When SMP arrives this file is one of the places that will need a spinlock. */
 
-#define PMM_PAGE_SIZE 4096
+// Moved to ref: core/version.h
+//#define PMM_PAGE_SIZE 4096
 
 /* Initialize from the bootloader's memory map and HHDM.
  * Panics if the map or HHDM is missing, or if there is no usable region big enough to hold the bitmap. */

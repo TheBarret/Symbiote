@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
+#include <core/version.h>
 
 /* Virtual file system.
  *
@@ -18,8 +19,9 @@
  * There is no block layer; a future disk filesystem would put its own block cache inside its implementation.
  */
 
-#define VFS_PATH_MAX 128
-#define VFS_NAME_MAX 32
+// Moved to ref: core/version.h
+//#define VFS_PATH_MAX 128
+//#define VFS_NAME_MAX 32
 
 enum vfs_type {
     VFS_FILE,
