@@ -37,3 +37,7 @@
 - `core/cpu.h`: `read_cr2`, `read_cr3`, `write_cr3`, and `invlpg` now carry a `"memory"` clobber. A CR3 write remaps the whole address space; an `invlpg` invalidates a TLB entry. Stores must not hoist across either.
 - `core/cpu.h`: added `outw` for symmetry with `inw`.
 - `core/cpu.h`: moved `outl` and `inl` up into the Port I/O section. They were filed under "PCI handlers" and read as PCI-specific when they are not.
+- `core/tui`: expanding TUI logic, fixing some minor issues and performance improvement.
+- `core/config.h`: created, begun to refactor global kernel settings, by analyzing all `core/*` modules, taking abstract parameters, mostly types of; sizes, shapes, maximums and minimums.
+- `core/version.h`: added ref: `config.h`, all core codebase sources should `#include` <version.h>`, it now comes with `config.h` included, resolving module parameter reference overlays.
+- `core/serial.h`: marked for a new design, current logic is not functional on `QEMU -serial pty -display none -monitor none` / `picocom` host-terminal mode, only output, no input, `shell.c` is using PS/2 exclusively at this moment.
