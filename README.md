@@ -7,9 +7,12 @@ developed with assistance from DeepSeek and ClaudeAI, using an [older kernel tem
 
 ---
 
-## Screenshot
+## Screenshots
 
-<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/8d61b571-d70e-478a-9461-3366b913cab4" />
+<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/ae5cf973-fccc-4f68-94dd-838ff9f3b4a7" />  
+
+
+<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/8d61b571-d70e-478a-9461-3366b913cab4" />  
 
 ---
 
