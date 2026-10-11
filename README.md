@@ -17,6 +17,23 @@ Using an older [kernel project](https://github.com/TheBarret/Kernel) with a `GRU
 
 ## Operational
 
+
+| Stage | Kind | Provides | Reached by |
+|---|---|---|---|
+| `serial` | device | first output path | direct call |
+| `bus` | registry | name → ops lookup | `bus_find` / typed finders |
+| `klog`, `kprintf` | service | formatted output | direct call |
+| `gdt`, `idt` | structural | descriptor + gate tables | `kmain` only |
+| `pmm` | structural | physical frames | `kmain`, `heap`, `vmm` |
+| `heap` | structural | `kmalloc` / `kfree` | direct call |
+| `vmm` | structural | page tables, W^X, mappings | `kmain` only |
+| `pic`, `lapic` | structural | interrupt delivery | `kmain` only |
+| `timer` | device | ticks, sleep, `after` / `cancel` | direct call, or `bus_timer()` |
+| `vfs` | device | files, directories | direct call, or `bus_vfs()` |
+| `console` | device | output fan-out | direct call, or `bus_console()` |
+| extensions | consumer | commands, drivers, tools | `ext_init_all()` |
+| shell | consumer | line editor, dispatch | `shell_run()` |
+
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader. ACPI, RSDP, and boot modules queried via the same request mechanism.  
