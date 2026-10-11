@@ -79,7 +79,7 @@ Exception handler prints the vector name, error code, registers, and backtrace t
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
 
 
-## Bus (Global Device Interface)
+## Bus - Device Framework
 
 A static registry at `core/bus.{h,c}`, linear with the core and brought up immediately after `serial_init()`.  
 
