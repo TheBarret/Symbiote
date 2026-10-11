@@ -10,7 +10,8 @@ Using an older [kernel project](https://github.com/TheBarret/Kernel) with a `GRU
 
 ## Screenshot / Assets
 
-<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/ae5cf973-fccc-4f68-94dd-838ff9f3b4a7" />  
+<img width="1290" height="850" alt="0.1.0" src="https://github.com/user-attachments/assets/7c125a34-cb30-40f2-83ce-7f352a1214ea" />  
+
 
 ---
 
@@ -76,6 +77,37 @@ PIT at `1000 Hz` driving a tick counter, timer_sleep_ms and uptime_ms.
 Exception handler prints the vector name, error code, registers, and backtrace through the existing panic path.  
 
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
+
+
+## Bus (Global Device Interface)
+
+A static registry at `core/bus.{h,c}`, linear with the core and brought up immediately after `serial_init()`.  
+
+<img width="861" height="72" alt="bus" src="https://github.com/user-attachments/assets/41b850cd-e3d5-4de8-965c-31d7e1dc8dfe" />  
+
+*console is the first device to introduce itself on the bus registry*  
+
+Modules that want to be discoverable call `bus_register()` during their own init,  
+either the kernel's first wave (`kmain` order) or the second (`ext_init_all()` priority order).  
+The table needs no heap and no locks, so it is live before the PMM and constant after the shell starts.  
+
+Lookups are by name or by class. Each class carries its own ops struct, 
+reached through a typed finder (`bus_console()`, `bus_timer()`, `bus_vfs()`);  
+the bus stores a `const void *` and a class tag, the caller casts to the ops it expects.  
+No universal read/write vtable is imposed on devices that are not shaped that way.  
+
+It is a registry, not a message bus. Modules linked together still call each other directly;  
+the bus exists for consumers that cannot `#include` a header, interpreters, script engines,  
+loadable extensions, anything that discovers what is present at runtime rather than at link time.  
+
+Currently built-in: 
+- `console` (console.h device: output)
+- `timer` (timer.h device: ticks, uptime, sleep, and the `after`/`cancel` scheduling pair)
+- `vfs` (vfs.c device: open, close, read, write, lseek, mkdir, unlink, stat, readdir).
+
+This is the interface a higher-order scripting layer builds on:  
+a VM or interpreter asks the bus for the capability it wants by name or class, receives the ops table,  
+and calls through it the same way any in-kernel module would.  
 
 ## Extensions
 
