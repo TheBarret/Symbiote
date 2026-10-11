@@ -34,34 +34,39 @@ Using an older [kernel project](https://github.com/TheBarret/Kernel) with a `GRU
 | extensions | consumer | commands, drivers, tools | `ext_init_all()` |
 | shell | consumer | line editor, dispatch | `shell_run()` |
 
-**Boot**  
+## Boot
+
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader. ACPI, RSDP, and boot modules queried via the same request mechanism.  
 
-**Consoles**  
+## Consoles
+
 Two independent output paths, serial (`COM1, 115200 8N1`) and framebuffer (via `flanterm`),  
 fed by one formatter, every byte written anywhere is also kept in a 16 KiB ring buffer,  
 so a console that comes up late receives the entire boot log at registration.  
 `console_putc` provides a character-at-a-time path for interactive echo without going through the formatter.  
 
-**Formatter**  
+## Formatter
+
 `kprintf` and `ksnprintf`, with integer, string, and pointer conversions, `-`/`0` flags,  
 width (literal or `*`), precision (`.N` or `.*`), and `l`/`ll`/`z` length modifiers. `h` truncates to 16 bits.   
 Compiler format-string checking on every call.
 
-**Keyboard**  
+## Keyboard
+
 Interrupt-driven PS/2 driver on IRQ1, controller self-test, scancode-set configuration via controller translation,  
 extended-key handling, modifier tracking, and device separation (keyboard vs mouse bytes via the `AUXBUF` status bit).  
 Raw scancodes are pushed into a ring buffer by the IRQ handler; decode runs in thread context, so the interrupt path never prints or allocates.  
 `kbd_getchar` blocks with `sti; hlt`, waking only when a key arrives.  
 
-**Shell**  
+## Interactive Shell
+
 Interactive line editor with history-free backspace, in-place tokenizer, and a command dispatcher driven entirely by a link-time registry.  
 The shell itself is a dumb parser; every command is an extension. Only `help` and `halt` remain built-in.  
 
 <img width="544" height="464" alt="help" src="https://github.com/user-attachments/assets/c59d2202-a3a2-4184-9d73-cd24466d3d0e" />  
 
-## Memory
+## Memory Stack
 
 - **Physical**: bitmap page allocator initialized from the bootloader's memory map.
   Hands out 4 KiB frames and contiguous runs. Bitmap placed in usable RAM via HHDM, not statically reserved.  
@@ -74,7 +79,7 @@ The shell itself is a dumb parser; every command is an extension. Only `help` an
 
   <img width="819" height="627" alt="memory" src="https://github.com/user-attachments/assets/b881a85c-c24a-4c54-bc97-5bf24ff693b7" />
 
-## Filesystem
+## Filesystem Routing
 
 In-memory `ramfs` under a thin VFS layer, node model with path normalization (`.`, `..`),  
 API: `vfs_open`/`close`/`read`/`write`/`lseek`, `vfs_mkdir`/`unlink`/`stat`/`readdir` with a single global spinlock with IRQ-save semantics.  
@@ -82,7 +87,7 @@ API: `vfs_open`/`close`/`read`/`write`/`lseek`, `vfs_mkdir`/`unlink`/`stat`/`rea
 <img width="401" height="214" alt="filesystem" src="https://github.com/user-attachments/assets/36113f79-2f7c-4140-b344-a0c50b0bf234" />  
 
 
-## Interrupts
+## Interrupts - Timers, Delta's
 
 GDT with a TSS and IST stacks for the double-fault vector, IDT with all `256` gates filled:  
 exceptions `0–31`, IRQs `32–47`, default handler beyond that.  
@@ -96,7 +101,7 @@ Exception handler prints the vector name, error code, registers, and backtrace t
 <img width="512" height="91" alt="Interrupts" src="https://github.com/user-attachments/assets/6f91f1f3-c2be-4347-bc3d-4965a67c85fc" />
 
 
-## Bus - Device Framework
+## Bus - Global Device Registry
 
 A static registry at `core/bus.{h,c}`, linear with the core and brought up immediately after `serial_init()`.  
 
@@ -126,6 +131,14 @@ This is the interface a higher-order scripting layer builds on:
 a VM or interpreter asks the bus for the capability it wants by name or class, receives the ops table,  
 and calls through it the same way any in-kernel module would.  
 
+
+## Built-in: Text-based User Interface aka TUI Engine
+
+`core/tui` is a small terminal UI core: two cell grids, rect-based drawing, differential flush.  
+A view is a draw callback and a key callback, example app is the `explorer` extension, a single-panel VFS browser.  
+
+<img width="744" height="438" alt="TUI" src="https://github.com/user-attachments/assets/5cea79c7-3963-43c5-a505-893b60ab8e94" />
+
 ## Extensions
 
 Link-time discovery via a dedicated linker section, priority-ordered initialization, failure-tolerant removable by name.  
@@ -136,16 +149,31 @@ with declarative parameter specs, centralized argument validation, and a boot-ti
 
 ## Diagnostics
 
-Supports a panic handler with register dump, frame-pointer backtrace, exception vector decoding, and basic reporting.  
-The `klog` is primitive log organizer with a fixed-width tag column, per-subsystem coloring, and an `rdtsc`-based timestamp prefix.  
-*(microsecond deltas after CPUID calibration, default value as fallback otherwise)*    
+Two paths report what the kernel is doing: the **log path** for normal operation, and the **panic path** for when it stops.  
 
-## Text-based User Interface - TUI Engine
+**klog**  
+A primitive log organizer with a fixed-width tag column, per-subsystem coloring, and an `rdtsc`-based timestamp prefix.  
+Tags (`[KERN]`, `[EXT]`, `[INFO]`, `[WARNING]`, `[ERROR]` and `[BUS]`) come from `config.h`,  
+so the set is centralized and a subsystem's colour is decided in one place.  
+The timestamp is a microsecond delta from the previous line, calibrated from `CPUID 0x15` at boot;  
+if the leaf is unavailable, a family/model table supplies a fallback, and if that fails too,  
+a default value is used so the log is still readable, just less precise.  
+The formatter is the same one every other output path uses, so a log line and a `kprintf` line are the same bytes.  
 
-`core/tui` is a small terminal UI core: two cell grids, rect-based drawing, differential flush.  
-A view is a draw callback and a key callback, example app is the `explorer` extension, a single-panel VFS browser.  
+**Panic**  
+Path taken when the kernel cannot continue. `panic_at()` records the source file and line,  
+formats the message through the same formatter, and prints a full context dump before halting:  
+the exception vector and its name if the panic came from an ISR, the error code,  
+all general-purpose registers, control registers where relevant, and a frame-pointer backtrace walked from the current stack.  
+If the panic occurred inside an extension, the dump names it, `ext_current()` is consulted and printed,  
+so the blame is not left implicit. The vector table is decoded from the IDT, so `#GP`, `#PF`,  
+and the rest print their names rather than numbers.  
 
-<img width="744" height="438" alt="TUI" src="https://github.com/user-attachments/assets/5cea79c7-3963-43c5-a505-893b60ab8e94" />
+Two macros route callers into the path without hand-formatting the call site.  
+  `PANIC(...)` is `panic_at(__FILE__, __LINE__, ...)`;  
+  `ASSERT(cond)` expands to a conditional `panic_at` carrying the failed condition as text.  
+Both are always compiled in, a failed assertion is not a debug-only event,  
+it is the kernel telling you the invariant it assumed is false, and continuing past that point is worse than stopping.    
 
 ---
 
