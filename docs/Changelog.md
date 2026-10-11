@@ -42,3 +42,7 @@
 - `core/version.h`: added ref: `config.h`, all core codebase sources should `#include <version.h>`, it now comes with `config.h` included, resolving module parameter reference overlays.
 - `core/serial.h`: marked for a new design, current logic is not functional on `QEMU -serial pty -display none -monitor none` / `picocom` host-terminal mode, only output, no input, `shell.c` is using PS/2 exclusively at this moment.
 - `core/host.c`, `core/host.h`, `src/ext/configure/*`: Probe extension and driver removed (out of favor).
+- `core/bus.c` + `core/bus.h`: the registry, static array, `BUS_MAX_DEVICES 32`, no heap, no locks. `bus_init` → `bus_register` → `bus_find` / `bus_find_class` / `bus_count` / `bus_at`.
+- Three devices on the bus, one per class: `console` (1), `timer` (2), `vfs` (3). Typed finders `bus_console()`, `bus_timer()`, `bus_vfs()` all working, ops tables dispatching to the real functions.
+- `timer` extended to a real device: `timer_after` / `timer_cancel` / `timer_drain`, ISR sets ready, drain runs decoupled, callbacks in thread context. Wired into `kbd_getchar`'s idle path so scheduling works while the shell is blocked.
+
