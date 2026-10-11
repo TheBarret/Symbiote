@@ -3,6 +3,7 @@
 #include <core/version.h>   // Master version, and also references config.h
 #include <core/serial.h>    // Serial driver, read-only, default is COM1, 115200 baud
 #include <core/boot.h>      // Limine API vectors and helpers
+#include <core/console.h>   // Console device, ps/2, serial
 #include <core/cpu.h>       // CPU tables, CPUID reader
 #include <core/kprintf.h>   // Formatted output to every console
 #include <core/klog.h>      // Kernel Logger extension (kern, info, warn, error)
@@ -18,22 +19,20 @@
 #include <core/vfs.h>       // Virtual File System, memory-based or ramfs
 #include <core/ext.h>       // Extension Manager, loads custom /ext/* modules
 #include <core/shell.h>     // Shell Manager, terminal control, adds extension apps, see ext.h and cmd.h
-
+#include <core/bus.h>       // Bus Manager, decoupled device control (console, vfs, interrupts)
 void kmain(void) {
-    // check
+    // Limine validation logic or hang forever
     if (!boot_protocol_ok()) {
         cpu_halt_forever();
     }
 
-    // bring up essentials
-    serial_init();
-
-    // init logger, present greeters and stages
+    serial_init();              // bring up essentials
     klog_init();
-    klog_info("Loading kernel: Symbiote %s-%s...\n", SYM_VERSION, SYM_VERSION_INFO);
+    klog_info("Loading kernel: Symbiote %s-%s...\n", SYM_VERSION, SYM_VERSION_INFO); // greeter
+    bus_init();
+    console_init();
 
-    // CPU tables (no heap required)
-    gdt_init();
+    gdt_init();                 // CPU tables (no heap required)
     idt_init();
 
     pmm_init();                 // memory
