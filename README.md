@@ -154,7 +154,7 @@ kernel/
   src/
     main.c            boot sequence
     core/             boot, cmd, console, cpu, ext, gdt, heap, idt, isr, keyboard, tui, klog,
-                      kprintf, panic, pic, pmm, serial, shell, timer, version, vmm, vfs
+                      kprintf, panic, pic, pmm, serial, shell, timer, version, vmm, vfs, bus
     lib/              mem, string
     ext/              fbcon, memory, system, vfs, explorer
     isr_stubs.S       interrupt entry stubs (GNU as)
