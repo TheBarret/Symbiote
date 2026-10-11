@@ -17,6 +17,9 @@ Using an older [kernel project](https://github.com/TheBarret/Kernel) with a `GRU
 
 ## Operational
 
+<img width="512" height="256" alt="image" src="https://github.com/user-attachments/assets/a6942be7-7193-48dc-a05d-310e9c58c818" />  
+
+
 **Boot**  
 Booting from an ISO under BIOS and UEFI, verified against the Limine protocol revision at every startup.  
 Memory map and HHDM offset queried from the bootloader. ACPI, RSDP, and boot modules queried via the same request mechanism.  
