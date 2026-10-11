@@ -1,7 +1,9 @@
+#include "klog.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <core/console.h>
 #include <core/version.h>
+#include <core/klog.h>
 
 // Moved to ref: core/version.h
 //#define CONSOLE_MAX 4
@@ -14,6 +16,25 @@ static size_t console_count;
 static char log_buf[LOG_SIZE];
 static size_t log_head;      /* index where the next byte will be written */
 static bool log_wrapped;     /* true once the ring has gone all the way round */
+
+/* bus advertiser */
+static const struct console_ops console_bus_ops = {
+    .name  = "console",
+    .write = console_write,
+};
+
+/* init + bus metadata */
+void console_init(void) {
+    struct bus_device dev = {
+        .name         = "console",
+        .class        = BUS_CLASS_CONSOLE,
+        .version      = 1,
+        .ops          = (void *)&console_bus_ops,
+        .private_data = NULL,
+    };
+    bus_register(&dev);
+    bus_test("console");
+}
 
 void console_write(const char *buf, size_t len) {
     for (size_t i = 0; i < len; i++) {

@@ -10,6 +10,7 @@
 #include <core/kprintf.h>
 #include <core/shell.h>
 
+
 // Moved to ref: core/version.h
 //#define SHELL_LINE_MAX  128
 

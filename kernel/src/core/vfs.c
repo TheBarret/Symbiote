@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <limits.h>
 #include <core/cpu.h>
+#include <core/bus.h>
 #include <core/heap.h>
 #include <core/ext.h>
 #include <core/klog.h>
@@ -20,6 +21,18 @@
  * on SMP it serializes the whole tree, which is the right granularity until a per-node lock is justified. */
 static volatile int vfs_lock;
 
+/* bus back-end */
+static const struct vfs_ops vfs_impl = {
+    .open    = vfs_open,
+    .close   = vfs_close,
+    .read    = vfs_read,
+    .write   = vfs_write,
+    .lseek   = vfs_lseek,
+    .mkdir   = vfs_mkdir,
+    .unlink  = vfs_unlink,
+    .stat    = vfs_stat,
+    .readdir = vfs_readdir,
+};
 
 static uint64_t vfs_acquire(void) {
     uint64_t flags = cpu_irq_save();
@@ -183,6 +196,17 @@ void vfs_init(void) {
     if (!root)
         PANIC("vfs init: cannot allocate root");
     klog("→ vfs_init() root mounted (flags=%lu)\n", flags);
+
+    // success, announce on bus
+    struct bus_device dev = {
+        .name         = "vfs",
+        .class        = BUS_CLASS_VFS,
+        .version      = 1,
+        .ops          = &vfs_impl,
+        .private_data = NULL,
+    };
+    bus_register(&dev);
+    bus_test("vfs");
 }
 
 struct vfs_file {

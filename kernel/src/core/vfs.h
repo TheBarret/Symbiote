@@ -75,4 +75,19 @@ int vfs_stat(const char *path, struct vfs_stat *out);
  * or false when there are no more entries. */
 bool vfs_readdir(const char *path, size_t *iter, char *name);
 
+
+
+/* bus back-end */
+struct vfs_ops {
+    struct vfs_file *(*open)(const char *path, int flags);
+    void             (*close)(struct vfs_file *f);
+    long             (*read)(struct vfs_file *f, void *buf, size_t n);
+    long             (*write)(struct vfs_file *f, const void *buf, size_t n);
+    long             (*lseek)(struct vfs_file *f, long off, int whence);
+    int              (*mkdir)(const char *path);
+    int              (*unlink)(const char *path);
+    int              (*stat)(const char *path, struct vfs_stat *out);
+    bool             (*readdir)(const char *path, size_t *iter, char *name);
+};
+
 #endif

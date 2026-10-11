@@ -2,12 +2,16 @@
 #define CORE_CONSOLE_H
 
 #include <stddef.h>
+#include <core/bus.h>
 
 /* Plugin console module */
 struct console_ops {
     const char *name;
     void (*write)(const char *buf, size_t len);
 };
+
+/* init (bus back-end) */
+void console_init(void);
 
 /* Attach a console */
 void console_register(const struct console_ops *ops);

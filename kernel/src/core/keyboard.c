@@ -5,6 +5,7 @@
 #include <core/isr.h>
 #include <core/keyboard.h>
 #include <core/kprintf.h>
+#include <core/timer.h>
 
 /*  controller ports and status bits  */
 
@@ -402,6 +403,7 @@ char kbd_getchar(void) {
         while (ring_empty()) {
             cpu_sti_hlt();
             cpu_cli();
+            timer_drain();   /* <- woke from any IRQ; run deferred work */
         }
         cpu_irq_restore(flags);
     }

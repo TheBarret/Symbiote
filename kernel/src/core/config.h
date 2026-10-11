@@ -34,6 +34,7 @@
 #define PIT_FREQ  1193182ull        /* Hz, the PIT's input clock */
 #define PIT_CH0   0x40
 #define PIT_CMD   0x43
+#define TIMER_MAX_TASKS 16          /* bus back-end */
 
 /* Shell settings
  * Ref: src/core/shell.c
@@ -55,11 +56,12 @@
 /* Klog settings
  * Ref: src/core/klog.h
  */
-#define SYM_TAG "\x1b[1;91m[KERN]\x1b[0m"
-#define SYM_TAG_EXT "\x1b[1;96m[EXT]\x1b[0m"
-#define SYM_TAG_INFO "\x1b[1;94m[INFO]\x1b[0m"
-#define SYM_TAG_WARNING "\x1b[1;93m[WARNING]\x1b[0m"
-#define SYM_TAG_ERROR "\x1b[1;91m[ERROR]\x1b[0m"
+#define SYM_TAG         "\x1b[1;35;7m[KERN]\x1b[0m"
+#define SYM_TAG_EXT     "\x1b[1;36;7m[EXT]\x1b[0m"
+#define SYM_TAG_BUS     "\x1b[1;32;7m[BUS]\x1b[0m"
+#define SYM_TAG_INFO    "\x1b[1;34;7m[INFO]\x1b[0m"
+#define SYM_TAG_WARNING "\x1b[1;33;7m[WARNING]\x1b[0m"
+#define SYM_TAG_ERROR   "\x1b[1;31;7m[ERROR]\x1b[0m"
 
 /* fbcon settings
  * Theme: phosphor green on near-black (0xRRGGBB)
@@ -67,5 +69,11 @@
  */
 static const uint32_t SYM_FBCON_BG = 0x000a0a0a;
 static const uint32_t SYM_FBCON_FG = 0x0033ff66;
+
+/* Bus settings
+ * Ref: src/core/bus.h
+ * Ref: src/core/bus.c
+ */
+#define BUS_MAX_DEVICES 32
 
 #endif
