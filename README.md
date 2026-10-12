@@ -177,7 +177,9 @@ it is the kernel telling you the invariant it assumed is false, and continuing p
 
 ---
 
-## Not operational (yet)
+## Not operational
+
+*Project never touched down on these listed features as of yet*  
 
 - No block device driver, no PCI enumeration.
 - No on-disk filesystem.
