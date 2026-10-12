@@ -2,7 +2,7 @@
 #define CORE_VERSION_H
 
 /* master config, centralized in config.h  */
-#include <config.h>
+#include <core/config.h>
 
 /* Global version and info tag */
 #define SYM_VERSION "0.1.0"
